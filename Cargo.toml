@@ -14,8 +14,8 @@ keywords = ["datalake", "pipeline", "xlake"]
 license = "Apache-2.0 OR MIT"
 readme = "./README.md"
 rust-version = "1.78"
-homepage = "https://github.com/ulagbulag/xlake"
-repository = "https://github.com/ulagbulag/xlake"
+homepage = "https://github.com/SmartX-Team/XLake"
+repository = "https://github.com/SmartX-Team/XLake"
 version = "0.1.0"
 
 [workspace.lints.clippy]
