@@ -1,0 +1,85 @@
+use xlake_ast::*;
+
+grammar;
+
+pub Seq: Vec<Plan> = {
+    <item: Plan> => vec![item],
+    <mut list: Seq> "!" <item: Plan> => {
+        list.push(item);
+        list
+    },
+}
+Plan: Plan = <kind: PlanKind> <args: Args?> => Plan {
+    kind,
+    args: args.unwrap_or_default(),
+};
+PlanKind: PlanKind = {
+    r"[a-z][_a-z0-9]*:[a-z][_a-z0-9]*" => {
+        let mut iter = <>.split(':');
+        let model_name = iter.next().unwrap().into();
+        let func = iter.next().unwrap().into();
+        PlanKind::Func {
+            model_name,
+            func,
+        }
+    },
+    r"[a-z][_a-z0-9]*format" => PlanKind::Format {
+        name: <>[..<>.len() - 4].into(),
+    },
+    r"[a-z][_a-z0-9]*model" => PlanKind::Model {
+        name: <>[..<>.len() - 5].into(),
+    },
+    r"[a-z][_a-z0-9]*sink" => PlanKind::Sink {
+        name: <>[..<>.len() - 4].into(),
+    },
+    r"[a-z][_a-z0-9]*src" => PlanKind::Src {
+        name: <>[..<>.len() - 3].into(),
+    },
+    r"[a-z][_a-z0-9]*store" => PlanKind::Store {
+        name: <>[..<>.len() - 5].into(),
+    },
+};
+
+Args: PlanArguments = {
+    <item: Arg> => {
+        let mut map = PlanArguments::default();
+        map.insert(item.key, item.value);
+        map
+    },
+    <mut map: Args> ","? <item: Arg> => {
+        map.insert(item.key, item.value);
+        map
+    },
+}
+Arg: PlanArgument = <key: Name> "=" <value: Value> => PlanArgument {
+    key,
+    value,
+};
+
+Value: Value = {
+    // handle arbitrary precision number
+    Number => Value::Number(<>),
+    String => Value::String(<>),
+};
+String: String = {
+    Name,
+    r#"'([^'\\]*(?:\\.[^'\\]*)*)'"# => <>[1..<>.len() - 1].into(),
+    r#""([^"\\]*(?:\\.[^"\\]*)*)""# => <>[1..<>.len() - 1].into(),
+}
+Number: Number = {
+    r"-?0|([1-9]+[0-9]*)|([0-9]*\.[0-9]+)|([0-9]+\.[0-9]*)" => Number::Dynamic(<>.into()),
+}
+
+Name: String = Iden => <>.into();
+Iden: &'input str = r"[a-z][_a-z0-9]*";
+
+match {
+   r"[a-z][_a-z0-9]*format",
+   r"[a-z][_a-z0-9]*model",
+   r"[a-z][_a-z0-9]*sink",
+   r"[a-z][_a-z0-9]*src",
+   r"[a-z][_a-z0-9]*store",
+} else {
+   r"[a-z][_a-z0-9]*",
+   _
+}

@@ -1,0 +1,42 @@
+[package]
+name = "xlake-cli"
+
+authors = { workspace = true }
+description = { workspace = true }
+documentation = { workspace = true }
+edition = { workspace = true }
+include = { workspace = true }
+keywords = { workspace = true }
+license = { workspace = true }
+readme = { workspace = true }
+rust-version = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "xlake"
+path = "./src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["default-tls"]
+
+# TLS
+default-tls = ["cdl-k8s-core/default-tls"]
+openssl-tls = ["cdl-k8s-core/openssl-tls"]
+rustls-tls = ["cdl-k8s-core/rustls-tls"]
+
+[dependencies]
+cdl-k8s-core = { workspace = true, features = ["opentelemetry-all"] }
+
+xlake = { workspace = true, features = ["full"] }
+
+anyhow = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }

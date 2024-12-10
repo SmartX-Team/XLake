@@ -1,0 +1,72 @@
+[workspace]
+default-members = ["crates/xlake-cli"]
+members = ["crates/*"]
+exclude = ["crates/target"]
+resolver = "2"
+
+[workspace.package]
+authors = ["Ho Kim <ho.kim@ulagbulag.io>"]
+description = "Data Lake Pipeline Generation Tool"
+documentation = "https://docs.rs/xlake"
+edition = "2021"
+include = ["src/**/*.rs", "Cargo.toml"]
+keywords = ["datalake", "pipeline", "xlake"]
+license = "Apache-2.0 OR MIT"
+readme = "./README.md"
+rust-version = "1.78"
+homepage = "https://github.com/ulagbulag/xlake"
+repository = "https://github.com/ulagbulag/xlake"
+version = "0.1.0"
+
+[workspace.lints.clippy]
+blocks_in_conditions = "allow" # opentelemetry tracing macro would be noisy
+
+[workspace.dependencies]
+xlake = { path = "./crates/xlake" }
+xlake-ast = { path = "./crates/xlake-ast" }
+xlake-core = { path = "./crates/xlake-core" }
+xlake-derive = { path = "./crates/xlake-derive" }
+xlake-parser = { path = "./crates/xlake-parser" }
+
+cdl-k8s-core = { git = "https://github.com/SmartX-Team/connected-data-lake", default-features = false }
+
+anyhow = { version = "1.0", default-features = false, features = [
+    "backtrace",
+    "std",
+] }
+async-trait = { version = "0.1", default-features = false }
+blake2 = { version = "0.10", default-features = false, features = ["std"] }
+bs58 = { version = "0.5", default-features = false, features = ["std"] }
+clap = { version = "4.5", default-features = false, features = [
+    "color",
+    "derive",
+    "env",
+    "error-context",
+    "help",
+    "std",
+    "string",
+    "suggestions",
+    "usage",
+] }
+digest = { version = "0.10", default-features = false, features = ["std"] }
+futures = { version = "0.3", default-features = false }
+lalrpop = { version = "0.22", default-features = false }
+lalrpop-util = { version = "0.22", default-features = false }
+num-format = { version = "0.4", default-features = false, features = ["std"] }
+object_store = { version = "0.11", default-features = false }
+quote = { version = "1.0", default-features = false, features = ["proc-macro"] }
+serde = { version = "1.0", default-features = false, features = ["std"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+serde_with = { version = "3.11", default-features = false, features = [
+    "macros",
+    "std",
+] }
+syn = { version = "2.0", default-features = false, features = [
+    "clone-impls",
+    "derive",
+    "parsing",
+    "printing",
+    "proc-macro",
+] }
+tokio = { version = "1.42", default-features = false }
+tracing = { version = "0.1", default-features = false, features = ["std"] }
