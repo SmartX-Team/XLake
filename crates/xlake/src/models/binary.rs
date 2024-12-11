@@ -3,10 +3,10 @@ use core::{borrow, fmt};
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use xlake_ast::Binary;
-use xlake_core::{models::hash::HashModelView, LazyObject};
-use xlake_derive::PipeModel;
+use xlake_core::{models::hash::HashModelView, object::LazyObject};
+use xlake_derive::PipeModelObject;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PipeModel)]
+#[derive(Clone, Debug, Serialize, Deserialize, PipeModelObject)]
 pub struct BinaryModelObject {
     pub content: Binary,
 }

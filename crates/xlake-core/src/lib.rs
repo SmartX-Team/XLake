@@ -1,24 +1,27 @@
 pub mod models;
+pub mod object;
 pub mod stream;
 
 use std::{
+    borrow::Borrow,
+    collections::BTreeSet,
     fmt,
-    future::Future,
     marker::PhantomData,
     pin::Pin,
+    sync::Arc,
     task::{Context, Poll},
 };
 
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt, TryStreamExt};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tracing::debug;
-use xlake_ast::{Binary, Number, Object, PlanArguments, PlanKind, PlanType, Value};
+use xlake_ast::{Object, PlanArguments, PlanKind, PlanType};
 
 #[async_trait]
 pub trait PipeFormat: Send + fmt::Debug {
-    fn extend_one(&mut self, item: LazyObject);
+    fn extend_one(&mut self, item: self::object::LazyObject);
 
     fn stream(&mut self) -> self::stream::StreamFormat;
 }
@@ -26,148 +29,77 @@ pub trait PipeFormat: Send + fmt::Debug {
 #[async_trait]
 pub trait PipeFunc: fmt::Debug {}
 
-pub trait PipeModel: fmt::Debug {}
+pub trait PipeModelConverter: fmt::Debug {}
 
-pub trait PipeModelEntity {
-    type Target: ?Sized;
+#[async_trait]
+pub trait PipeModelObject
+where
+    Self: Sized + PipeModelView,
+{
+    type View: PipeModelView;
+    type ViewRef<'a>: PipeModelView;
+    type ViewMut<'a>: PipeModelView;
 
-    fn get<'a>(item: &'a mut LazyObject, key: &str) -> Option<&'a mut Self::Target>;
-}
+    fn __model_name() -> String;
 
-macro_rules! impl_model_entity {
-    ( $ty:ty as $variant:ident => $target:ty ) => {
-        impl PipeModelEntity for $ty {
-            type Target = $target;
-
-            fn get<'a>(item: &'a mut LazyObject, key: &str) -> Option<&'a mut Self::Target> {
-                match item.content.get_mut(key)? {
-                    Value::$variant(v) => Some(v),
-                    _ => None,
-                }
-            }
-        }
-    };
-}
-
-impl_model_entity!(bool as Bool => bool);
-impl_model_entity!(Number as Number => Number);
-impl_model_entity!(String as String => String);
-
-impl PipeModelEntity for Binary {
-    type Target = Vec<u8>;
-
-    #[inline]
-    fn get<'a>(item: &'a mut LazyObject, key: &str) -> Option<&'a mut Self::Target> {
-        let value = item.content.get_mut(key)?;
-        if let Value::String(v) = value {
-            let v = Binary(v.as_bytes().to_vec());
-            *value = Value::Binary(v);
-        }
-        match value {
-            Value::Binary(v) => Some(v),
-            _ => None,
-        }
+    fn __provides() -> BTreeSet<String> {
+        let mut set = BTreeSet::default();
+        set.insert(<Self as PipeModelObject>::__model_name());
+        set
     }
 }
 
-impl PipeModelEntity for Value {
-    type Target = Value;
-
-    #[inline]
-    fn get<'a>(item: &'a mut LazyObject, key: &str) -> Option<&'a mut Self::Target> {
-        item.content.get_mut(key)
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct LazyObject {
-    #[serde(skip)]
-    future: Option<Pin<Box<dyn Send + Future<Output = Result<Object>>>>>,
-    content: Object,
-}
-
-impl From<Object> for LazyObject {
-    #[inline]
-    fn from(content: Object) -> Self {
-        Self {
-            future: None,
-            content,
-        }
-    }
-}
-
-impl fmt::Debug for LazyObject {
-    #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.content.fmt(f)
-    }
-}
-
-impl LazyObject {
-    #[inline]
-    pub fn get<T>(&mut self, key: &str) -> Option<&mut T::Target>
+pub trait PipeModelOwned<T>
+where
+    T: Borrow<self::object::LazyObject> + Into<self::object::LazyObject>,
+{
+    fn __cast(item: T) -> Result<Self, T>
     where
-        T: PipeModelEntity,
-    {
-        <T as PipeModelEntity>::get(self, key)
-    }
+        Self: Sized;
 
-    #[inline]
-    pub fn get_raw(&self, key: &str) -> Option<&Value> {
-        self.content.get(key)
-    }
-
-    #[inline]
-    pub fn get_mut_raw(&mut self, key: &str) -> Option<&mut Value> {
-        self.content.get_mut(key)
-    }
-
-    #[inline]
-    pub fn insert(&mut self, key: String, value: impl Into<Value>) -> Option<Value> {
-        self.content.insert(key, value.into())
-    }
-
-    pub async fn pull(self) -> Result<Object> {
-        let Self {
-            mut future,
-            mut content,
-        } = self;
-        if let Some(future) = future.take() {
-            // TODO: merge? (idea needed)
-            content = future.await?;
-        }
-        Ok(content)
-    }
-}
-
-pub trait PipeModelView<T>: Unpin + Into<T> {
-    fn cast(item: T) -> Result<Self, T>;
-}
-
-impl PipeModelView<Self> for LazyObject {
-    #[inline]
-    fn cast(item: LazyObject) -> Result<Self, LazyObject> {
-        Ok(item)
-    }
-}
-
-pub trait PipeModelViewExt<V>: PipeModelView<V> {
-    #[inline]
-    fn view<T>(self) -> Result<T, V>
+    fn __into_inner(self) -> T
     where
-        T: PipeModelView<V>,
+        Self: Sized;
+}
+
+pub trait PipeModelOwnedExt<T>
+where
+    Self: PipeModelOwned<T>,
+    T: Borrow<self::object::LazyObject> + Into<self::object::LazyObject>,
+{
+    #[inline]
+    fn into_any(self) -> self::object::LazyObject
+    where
+        Self: Sized,
     {
-        <T as PipeModelView<V>>::cast(self.into())
+        self.__into_inner().into()
+    }
+
+    #[inline]
+    fn view<V>(self) -> Result<V, Self>
+    where
+        Self: Sized + Borrow<self::object::LazyObject> + Into<self::object::LazyObject>,
+        V: PipeModelOwned<Self>,
+    {
+        <V as PipeModelOwned<Self>>::__cast(self)
     }
 }
 
-impl<T, V> PipeModelViewExt<V> for T where T: PipeModelView<V> {}
+impl<O, T> PipeModelOwnedExt<O> for T
+where
+    Self: PipeModelOwned<O>,
+    O: Borrow<self::object::LazyObject> + Into<self::object::LazyObject>,
+{
+}
 
-pub trait PipeModelValue: Serialize {
-    type View: PipeModelView<LazyObject>;
-    type ViewRef<'a>: PipeModelView<&'a LazyObject>;
-    type ViewMut<'a>: PipeModelView<&'a mut LazyObject>;
+pub trait PipeModelView {
+    fn __model_name(&self) -> String;
+
+    fn __provides(&self) -> BTreeSet<String> {
+        let mut set = BTreeSet::default();
+        set.insert(self.__model_name());
+        set
+    }
 }
 
 #[async_trait]
@@ -181,12 +113,12 @@ pub trait PipeSrc: fmt::Debug {
 }
 
 #[async_trait]
-pub trait PipeStore: Sync + fmt::Debug {
-    async fn contains(&self, hash: &str) -> Result<bool>;
+pub trait PipeStore: Send + Sync + fmt::Debug {
+    async fn contains(&self, hash: &self::models::hash::Hash) -> Result<bool>;
 
-    async fn read_item(&self, hash: &str) -> Result<Object>;
+    async fn read_item(&self, hash: &self::models::hash::Hash) -> Result<Object>;
 
-    async fn write_item(&self, hash: &str, object: &Object) -> Result<()>;
+    async fn write_item(&self, hash: &self::models::hash::Hash, object: &Object) -> Result<()>;
 }
 
 #[async_trait]
@@ -195,36 +127,39 @@ pub trait PipeStoreExt {
 }
 
 #[async_trait]
-impl<T> PipeStoreExt for T
+impl<T> PipeStoreExt for Arc<T>
 where
-    T: ?Sized + PipeStore,
+    T: 'static + ?Sized + PipeStore,
 {
     async fn save(&self, channel: PipeChannel) -> Result<PipeChannel> {
         channel
-            .async_iter::<LazyObject>()
+            .async_iter::<self::object::LazyObject>()
             .then(|item| async {
-                let mut item = match self::models::hash::HashModelView::cast(item) {
+                let mut item = match self::models::hash::HashModelView::__cast(item) {
                     Ok(item) => item,
                     Err(item) => return Ok(item),
                 };
-                let hash = item.hash().to_string();
+                let hash = item.hash();
                 if self.contains(&hash).await? {
                     // Hit
-                    if item.item.future.is_some() {
+                    if item.is_ready() {
                         // Drop the future and get it from the store
                         debug!("Hit cache: {hash}");
-                        // TODO: to be implemented (merge?)
-                        self.read_item(&hash).await.map(Into::into)
+                        let future = Box::pin({
+                            let store = self.clone();
+                            async move { store.read_item(&hash).await }
+                        });
+                        Ok(item.into_any().replace_with(future))
                     } else {
-                        Ok(item.into())
+                        Ok(item.into_any())
                     }
                 } else {
                     // Miss
                     debug!("Miss cache: {hash}");
-                    let item: LazyObject = item.into();
-                    let content = LazyObject::pull(item).await?;
-                    self.write_item(&hash, &content).await?;
-                    Ok(content.into())
+                    let content = item.into_any().flatten().await?;
+                    self.write_item(&hash, content.as_content_unpolled())
+                        .await?;
+                    Ok(content)
                 }
             })
             .try_collect()
@@ -232,20 +167,14 @@ where
     }
 }
 
-#[async_trait]
-impl PipeStoreExt for Box<dyn PipeStore> {
-    async fn save(&self, channel: PipeChannel) -> Result<PipeChannel> {
-        (&**self).save(channel).await
-    }
-}
-
 #[derive(Debug)]
 pub enum PipeNodeImpl {
     Format(Box<dyn PipeFormat>),
     Func(Box<dyn PipeFunc>),
+    Model(Box<dyn PipeModelConverter>),
     Sink(Box<dyn PipeSink>),
     Src(Box<dyn PipeSrc>),
-    Store(Box<dyn PipeStore>),
+    Store(Arc<dyn PipeStore>),
 }
 
 impl PipeNodeImpl {
@@ -253,6 +182,7 @@ impl PipeNodeImpl {
         match self {
             Self::Format(_) => PlanType::Format,
             Self::Func(_) => PlanType::Func,
+            Self::Model(_) => PlanType::Model,
             Self::Sink(_) => PlanType::Sink,
             Self::Src(_) => PlanType::Src,
             Self::Store(_) => PlanType::Store,
@@ -326,8 +256,8 @@ impl Default for PipeChannel {
     }
 }
 
-impl Extend<LazyObject> for PipeChannel {
-    fn extend<T: IntoIterator<Item = LazyObject>>(&mut self, iter: T) {
+impl Extend<self::object::LazyObject> for PipeChannel {
+    fn extend<T: IntoIterator<Item = self::object::LazyObject>>(&mut self, iter: T) {
         iter.into_iter()
             .for_each(|item| self.format.extend_one(item))
     }
@@ -336,7 +266,7 @@ impl Extend<LazyObject> for PipeChannel {
 impl PipeChannel {
     pub fn async_iter<T>(self) -> PipeChannelAsyncIter<T>
     where
-        T: PipeModelView<LazyObject>,
+        T: Unpin + From<self::object::LazyObject>,
     {
         let Self { mut format } = self;
 
@@ -346,8 +276,13 @@ impl PipeChannel {
         }
     }
 
-    pub fn stream_unit(item: impl Serialize) -> Result<Self> {
-        let item: LazyObject = Object::from_value(item)?.into();
+    #[inline]
+    pub fn stream_unit<O, T>(object: T) -> Result<Self>
+    where
+        O: Borrow<self::object::LazyObject> + Into<self::object::LazyObject>,
+        T: Serialize + PipeModelOwned<O>,
+    {
+        let item = object.into_any();
         let format = Box::new(self::stream::StreamFormat::from_unit(item));
         Ok(Self { format })
     }
@@ -355,7 +290,7 @@ impl PipeChannel {
 
 pub struct PipeChannelAsyncIter<T>
 where
-    T: PipeModelView<LazyObject>,
+    T: Unpin + TryFrom<self::object::LazyObject>,
 {
     _view: PhantomData<T>,
     stream: self::stream::StreamFormat,
@@ -363,7 +298,7 @@ where
 
 impl<T> Stream for PipeChannelAsyncIter<T>
 where
-    T: PipeModelView<LazyObject>,
+    T: Unpin + TryFrom<self::object::LazyObject>,
 {
     type Item = T;
 
@@ -371,6 +306,6 @@ where
         self.get_mut()
             .stream
             .poll_next_unpin(cx)
-            .map(|maybe_item| maybe_item.and_then(|item| T::cast(item).ok()))
+            .map(|maybe_item| maybe_item.and_then(|item| T::try_from(item).ok()))
     }
 }

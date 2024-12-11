@@ -6,7 +6,7 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use xlake_ast::{PlanArguments, PlanKind};
 use xlake_core::{
-    LazyObject, PipeChannel, PipeModelViewExt, PipeNodeBuilder, PipeNodeImpl, PipeSink,
+    object::LazyObject, PipeChannel, PipeModelOwnedExt, PipeNodeBuilder, PipeNodeImpl, PipeSink,
 };
 
 use crate::models::{binary::BinaryModelView, doc::DocModelView};
@@ -41,14 +41,15 @@ impl PipeSink for StdoutSink {
     async fn call(&self, channel: PipeChannel) -> Result<()> {
         let mut iter = channel.async_iter::<LazyObject>();
         while let Some(item) = iter.next().await {
-            let item = match LazyObject::view::<DocModelView>(item) {
+            let item = item.flatten().await?;
+            let item = match item.view::<DocModelView>() {
                 Ok(item) => {
                     println!("{item}");
                     continue;
                 }
                 Err(item) => item,
             };
-            let item = match LazyObject::view::<BinaryModelView>(item) {
+            let item = match item.view::<BinaryModelView>() {
                 Ok(mut item) => {
                     let _ = item.content();
                     println!("{item}");

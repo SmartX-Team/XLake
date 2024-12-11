@@ -2,11 +2,13 @@ use std::{fmt, path::PathBuf};
 
 use anyhow::Result;
 use async_trait::async_trait;
+use futures::FutureExt;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use xlake_ast::{PlanArguments, PlanKind};
 use xlake_core::{
-    models::hash::HashModelView, PipeChannel, PipeEdge, PipeNodeBuilder, PipeNodeImpl, PipeSrc,
+    models::hash::HashModelView, PipeChannel, PipeEdge, PipeModelOwnedExt, PipeNodeBuilder,
+    PipeNodeImpl, PipeSrc,
 };
 
 use crate::models::{binary::BinaryModelObject, file::FileModelView};
@@ -58,12 +60,23 @@ impl PipeSrc for FileSrc {
             .and_then(|ext| ext.to_str())
             .unwrap_or_default();
 
-        let content = fs::read(&path).await?.into();
+        let content = {
+            let path = path.clone();
+            async move {
+                let content = fs::read(&path).await?;
+                Ok(BinaryModelObject {
+                    content: content.into(),
+                })
+            }
+        };
 
-        let item = BinaryModelObject { content };
         let item = match cache {
-            FileCacheType::Content => HashModelView::try_from(item)?,
-            FileCacheType::Path => HashModelView::try_new(item, &path)?,
+            FileCacheType::Content => content.await?.into(),
+            FileCacheType::Path => {
+                let mut item = HashModelView::new(&path).into_any();
+                item.insert_future(content.boxed());
+                item
+            }
         };
         let item = FileModelView::new(item, extension.into());
         PipeChannel::stream_unit(item)
@@ -75,7 +88,7 @@ impl PipeSrc for FileSrc {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum FileCacheType {
-    #[default]
     Content,
+    #[default]
     Path,
 }

@@ -161,6 +161,8 @@ impl PipeSession {
                 PipeNodeImpl::Format(imp) => todo!(),
                 // TODO: to be implemented
                 PipeNodeImpl::Func(imp) => todo!(),
+                // TODO: to be implemented
+                PipeNodeImpl::Model(imp) => todo!(),
                 PipeNodeImpl::Sink(imp) => {
                     imp.call(channel.unwrap()).await?;
                     break;
@@ -182,7 +184,7 @@ impl PipeSession {
         &self,
         iter: impl Iterator<Item = &'a String>,
         type_name: ValidatableTypeName,
-    ) -> Result<Vec<&Box<dyn PipeNodeBuilder>>> {
+    ) -> Result<Vec<&dyn PipeNodeBuilder>> {
         iter.cloned()
             .map(|name| match type_name {
                 ValidatableTypeName::Format => PlanKind::Format { name },
@@ -191,6 +193,7 @@ impl PipeSession {
             .map(|ref kind| {
                 self.builders
                     .get(kind)
+                    .map(|builder| &**builder)
                     .with_context(|| format!("No such {type_name}: {kind}"))
             })
             .collect()

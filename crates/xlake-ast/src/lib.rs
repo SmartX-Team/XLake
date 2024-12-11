@@ -265,7 +265,7 @@ macro_rules! impl_atomic_integer_deserialize {
     };
 }
 
-impl<'de> Visitor<'de> for ValueVisitor {
+impl Visitor<'_> for ValueVisitor {
     type Value = Value;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

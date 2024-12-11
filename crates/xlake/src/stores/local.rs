@@ -1,11 +1,11 @@
-use std::{fmt, path::PathBuf};
+use std::{fmt, path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use xlake_ast::{Object, PlanArguments, PlanKind};
-use xlake_core::{PipeNodeBuilder, PipeNodeImpl, PipeStore};
+use xlake_core::{models::hash::Hash, PipeNodeBuilder, PipeNodeImpl, PipeStore};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct LocalStoreBuilder;
@@ -27,7 +27,7 @@ impl PipeNodeBuilder for LocalStoreBuilder {
     async fn build(&self, args: &PlanArguments) -> Result<PipeNodeImpl> {
         let imp: LocalStore = args.to()?;
         imp.init().await?;
-        Ok(PipeNodeImpl::Store(Box::new(imp)))
+        Ok(PipeNodeImpl::Store(Arc::new(imp)))
     }
 }
 
@@ -43,23 +43,23 @@ impl LocalStore {
         Ok(())
     }
 
-    fn path(&self, hash: &str) -> PathBuf {
+    fn path(&self, hash: &Hash) -> PathBuf {
         self.path.join(format!("{hash}.json"))
     }
 }
 
 #[async_trait]
 impl PipeStore for LocalStore {
-    async fn contains(&self, hash: &str) -> Result<bool> {
+    async fn contains(&self, hash: &Hash) -> Result<bool> {
         fs::try_exists(self.path(hash)).await.map_err(Into::into)
     }
 
-    async fn read_item(&self, hash: &str) -> Result<Object> {
+    async fn read_item(&self, hash: &Hash) -> Result<Object> {
         let buf = fs::read(self.path(hash)).await?;
         ::serde_json::from_slice(&buf).map_err(Into::into)
     }
 
-    async fn write_item(&self, hash: &str, object: &Object) -> Result<()> {
+    async fn write_item(&self, hash: &Hash, object: &Object) -> Result<()> {
         let contents = object.to_vec()?;
         fs::write(self.path(hash), contents)
             .await

@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use xlake_ast::{PlanArguments, PlanKind};
 
-use crate::{LazyObject, PipeFormat, PipeNodeBuilder, PipeNodeImpl};
+use crate::{object::LazyObject, PipeFormat, PipeNodeBuilder, PipeNodeImpl};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StreamFormatBuilder;
