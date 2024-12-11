@@ -11,7 +11,7 @@ use xlake_core::{
     PipeNodeImpl, PipeSrc,
 };
 
-use crate::models::{binary::BinaryModelObject, file::FileModelView};
+use crate::models::builtins::{binary::BinaryModelObject, file::FileModelView};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct FileSrcBuilder;

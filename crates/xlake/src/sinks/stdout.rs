@@ -9,7 +9,7 @@ use xlake_core::{
     object::LazyObject, PipeChannel, PipeModelOwnedExt, PipeNodeBuilder, PipeNodeImpl, PipeSink,
 };
 
-use crate::models::{binary::BinaryModelView, doc::DocModelView};
+use crate::models::builtins::{binary::BinaryModelView, doc::DocModelView};
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StdoutSinkBuilder;

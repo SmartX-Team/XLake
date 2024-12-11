@@ -9,7 +9,7 @@ use xlake_core::{
     models::hash::HashModelView, PipeChannel, PipeEdge, PipeNodeBuilder, PipeNodeImpl, PipeSrc,
 };
 
-use crate::models::doc::DocModelObject;
+use crate::models::builtins::doc::DocModelObject;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StdinSrcBuilder;

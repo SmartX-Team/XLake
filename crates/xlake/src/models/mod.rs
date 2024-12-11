@@ -1,4 +1,2 @@
-pub mod binary;
-pub mod doc;
-pub mod file;
+pub mod builtins;
 pub mod image;
