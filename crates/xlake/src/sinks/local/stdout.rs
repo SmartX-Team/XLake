@@ -2,7 +2,7 @@ use std::fmt;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use futures::StreamExt;
+use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use xlake_ast::{PlanArguments, PlanKind};
 use xlake_core::{
@@ -28,23 +28,24 @@ impl PipeNodeBuilder for StdoutSinkBuilder {
         }
     }
 
-    async fn build(&self, _args: &PlanArguments) -> Result<PipeNodeImpl> {
-        Ok(PipeNodeImpl::Sink(Box::new(StdoutSink)))
+    async fn build(&self, args: &PlanArguments) -> Result<PipeNodeImpl> {
+        let imp: StdoutSink = args.to()?;
+        Ok(PipeNodeImpl::Sink(Box::new(imp)))
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct StdoutSink;
+pub struct StdoutSink {}
 
 #[async_trait]
 impl PipeSink for StdoutSink {
     async fn call(&self, channel: PipeChannel) -> Result<()> {
-        let mut iter = channel.async_iter::<LazyObject>();
-        while let Some(item) = iter.next().await {
+        let mut iter = channel.async_iter::<LazyObject>().await?;
+        while let Some(item) = iter.try_next().await? {
             let item = item.flatten().await?;
             let item = match item.view::<DocModelView>() {
-                Ok(item) => {
-                    println!("{item}");
+                Ok(mut item) => {
+                    println!("{}", item.document());
                     continue;
                 }
                 Err(item) => item,
@@ -57,7 +58,7 @@ impl PipeSink for StdoutSink {
                 }
                 Err(item) => item,
             };
-            dbg!(item);
+            println!("{}", item.to_string_pretty()?);
         }
         Ok(())
     }

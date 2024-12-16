@@ -1,6 +1,6 @@
+pub mod formats;
 pub mod models;
 pub mod object;
-pub mod stream;
 
 use std::{
     borrow::Borrow,
@@ -23,11 +23,15 @@ use xlake_ast::{Object, PlanArguments, PlanKind, PlanType};
 pub trait PipeFormat: Send + fmt::Debug {
     fn extend_one(&mut self, item: self::object::LazyObject);
 
-    fn stream(&mut self) -> self::stream::StreamFormat;
+    async fn batch(&mut self) -> Result<self::formats::batch::BatchFormat>;
+
+    async fn stream(&mut self) -> Result<self::formats::stream::StreamFormat>;
 }
 
 #[async_trait]
-pub trait PipeFunc: fmt::Debug {}
+pub trait PipeFunc: fmt::Debug {
+    async fn call(&self, channel: PipeChannel) -> Result<PipeChannel>;
+}
 
 pub trait PipeModelConverter: fmt::Debug {}
 
@@ -134,7 +138,8 @@ where
     async fn save(&self, channel: PipeChannel) -> Result<PipeChannel> {
         channel
             .async_iter::<self::object::LazyObject>()
-            .then(|item| async {
+            .await?
+            .and_then(|item| async {
                 let mut item = match self::models::hash::HashModelView::__cast(item) {
                     Ok(item) => item,
                     Err(item) => return Ok(item),
@@ -171,7 +176,6 @@ where
 pub enum PipeNodeImpl {
     Format(Box<dyn PipeFormat>),
     Func(Box<dyn PipeFunc>),
-    Model(Box<dyn PipeModelConverter>),
     Sink(Box<dyn PipeSink>),
     Src(Box<dyn PipeSrc>),
     Store(Arc<dyn PipeStore>),
@@ -182,7 +186,6 @@ impl PipeNodeImpl {
         match self {
             Self::Format(_) => PlanType::Format,
             Self::Func(_) => PlanType::Func,
-            Self::Model(_) => PlanType::Model,
             Self::Sink(_) => PlanType::Sink,
             Self::Src(_) => PlanType::Src,
             Self::Store(_) => PlanType::Store,
@@ -251,7 +254,7 @@ pub struct PipeChannel {
 impl Default for PipeChannel {
     fn default() -> Self {
         Self {
-            format: Box::new(self::stream::StreamFormat::default()),
+            format: Box::new(self::formats::stream::StreamFormat::default()),
         }
     }
 }
@@ -263,16 +266,36 @@ impl Extend<self::object::LazyObject> for PipeChannel {
     }
 }
 
-impl PipeChannel {
-    pub fn async_iter<T>(self) -> PipeChannelAsyncIter<T>
+impl FromIterator<self::object::LazyObject> for PipeChannel {
+    #[inline]
+    fn from_iter<T>(iter: T) -> Self
     where
-        T: Unpin + From<self::object::LazyObject>,
+        T: IntoIterator<Item = self::object::LazyObject>,
+    {
+        Self {
+            format: Box::new(self::formats::stream::StreamFormat::from_iter(iter)),
+        }
+    }
+}
+
+impl PipeChannel {
+    #[inline]
+    pub async fn async_iter<T>(self) -> Result<PipeChannelAsyncIter<T>>
+    where
+        T: Unpin + PipeModelOwned<self::object::LazyObject>,
     {
         let Self { mut format } = self;
 
-        PipeChannelAsyncIter {
+        Ok(PipeChannelAsyncIter {
             _view: PhantomData,
-            stream: format.stream(),
+            stream: format.stream().await?,
+        })
+    }
+
+    #[inline]
+    pub fn stream_batch(format: impl 'static + PipeFormat) -> Self {
+        Self {
+            format: Box::new(format),
         }
     }
 
@@ -283,29 +306,28 @@ impl PipeChannel {
         T: Serialize + PipeModelOwned<O>,
     {
         let item = object.into_any();
-        let format = Box::new(self::stream::StreamFormat::from_unit(item));
+        let format = Box::new(self::formats::stream::StreamFormat::from_unit(item));
         Ok(Self { format })
     }
 }
 
 pub struct PipeChannelAsyncIter<T>
 where
-    T: Unpin + TryFrom<self::object::LazyObject>,
+    T: Unpin + PipeModelOwned<self::object::LazyObject>,
 {
     _view: PhantomData<T>,
-    stream: self::stream::StreamFormat,
+    stream: self::formats::stream::StreamFormat,
 }
 
 impl<T> Stream for PipeChannelAsyncIter<T>
 where
-    T: Unpin + TryFrom<self::object::LazyObject>,
+    T: Unpin + PipeModelOwned<self::object::LazyObject>,
 {
-    type Item = T;
+    type Item = Result<T>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.get_mut()
-            .stream
-            .poll_next_unpin(cx)
-            .map(|maybe_item| maybe_item.and_then(|item| T::try_from(item).ok()))
+        self.get_mut().stream.poll_next_unpin(cx).map(|option| {
+            option.and_then(|result| result.map(|item| T::__cast(item).ok()).transpose())
+        })
     }
 }

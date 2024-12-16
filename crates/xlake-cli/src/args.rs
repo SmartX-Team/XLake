@@ -1,6 +1,7 @@
 use clap::Parser;
 
 #[derive(Debug, Parser)]
+#[clap(about, author, version)]
 pub struct Args {
     pub command: Vec<String>,
 

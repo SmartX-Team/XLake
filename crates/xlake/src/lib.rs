@@ -1,4 +1,3 @@
-pub mod funcs;
 pub mod models;
 pub mod sinks;
 pub mod srcs;
@@ -38,9 +37,20 @@ impl PipeSession {
     }
 
     fn add_builtin_builders(&mut self) {
-        self.insert_builder(Box::new(self::sinks::stdout::StdoutSinkBuilder));
-        self.insert_builder(Box::new(self::srcs::file::FileSrcBuilder));
-        self.insert_builder(Box::new(self::srcs::stdin::StdinSrcBuilder));
+        #[cfg(feature = "batch")]
+        self.insert_builder(Box::new(::xlake_core::formats::batch::BatchBuilder));
+        self.insert_builder(Box::new(::xlake_core::formats::stream::StreamFormatBuilder));
+        #[cfg(feature = "libreoffice")]
+        self.insert_builder(Box::new(self::models::builtins::binary::pdf::PdfBuilder));
+        #[cfg(feature = "io-std")]
+        self.insert_builder(Box::new(self::sinks::local::stdout::StdoutSinkBuilder));
+        #[cfg(feature = "csv")]
+        self.insert_builder(Box::new(self::srcs::local::csv::CsvSrcBuilder));
+        #[cfg(feature = "fs")]
+        self.insert_builder(Box::new(self::srcs::local::file::FileSrcBuilder));
+        #[cfg(feature = "io-std")]
+        self.insert_builder(Box::new(self::srcs::local::stdin::StdinSrcBuilder));
+        #[cfg(feature = "fs")]
         self.insert_builder(Box::new(self::stores::local::LocalStoreBuilder));
     }
 
@@ -160,9 +170,8 @@ impl PipeSession {
                 // TODO: to be implemented
                 PipeNodeImpl::Format(imp) => todo!(),
                 // TODO: to be implemented
-                PipeNodeImpl::Func(imp) => todo!(),
+                PipeNodeImpl::Func(imp) => imp.call(channel.unwrap()).await?,
                 // TODO: to be implemented
-                PipeNodeImpl::Model(imp) => todo!(),
                 PipeNodeImpl::Sink(imp) => {
                     imp.call(channel.unwrap()).await?;
                     break;
@@ -212,8 +221,8 @@ impl PipeSession {
         outputs: impl Iterator<Item = &'a String>,
         type_name: ValidatableTypeName,
     ) -> Result<()> {
-        let input_builders: Vec<_> = self.collect_builders(inputs, type_name)?;
-        let outputs_builders: Vec<_> = self.collect_builders(outputs, type_name)?;
+        // let input_builders: Vec<_> = self.collect_builders(inputs, type_name)?;
+        // let outputs_builders: Vec<_> = self.collect_builders(outputs, type_name)?;
         // TODO: to be implemented (validate)
         Ok(())
     }

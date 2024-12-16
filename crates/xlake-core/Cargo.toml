@@ -19,13 +19,21 @@ workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+full = ["batch"]
+
+batch = ["dep:arrow-json", "dep:datafusion"]
+
 [dependencies]
 xlake-ast = { workspace = true }
 
 anyhow = { workspace = true }
+arrow-json = { workspace = true, optional = true }
 async-trait = { workspace = true }
 blake2 = { workspace = true }
 bs58 = { workspace = true }
+datafusion = { workspace = true, optional = true }
 digest = { workspace = true }
 futures = { workspace = true }
 serde = { workspace = true }

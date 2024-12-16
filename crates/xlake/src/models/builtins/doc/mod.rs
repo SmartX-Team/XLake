@@ -1,3 +1,5 @@
+pub mod split;
+
 use core::{borrow, fmt};
 
 use anyhow::Error;
@@ -35,4 +37,8 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.document_raw().fmt(f)
     }
+}
+
+mod consts {
+    pub(super) const NAME: &str = "doc";
 }

@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fmt, ops};
 
-use anyhow::Result;
+use anyhow::{bail, Error, Result};
 use num_format::{Locale, ToFormattedString};
 use serde::{
     de::{self, DeserializeOwned, Visitor},
@@ -153,6 +153,14 @@ impl Object {
         ::serde_json::to_value(self).map_err(Into::into)
     }
 
+    pub fn to_string(&self) -> Result<String> {
+        ::serde_json::to_string(self).map_err(Into::into)
+    }
+
+    pub fn to_string_pretty(&self) -> Result<String> {
+        ::serde_json::to_string_pretty(self).map_err(Into::into)
+    }
+
     pub fn to_vec(&self) -> Result<Vec<u8>> {
         ::serde_json::to_vec(self).map_err(Into::into)
     }
@@ -249,6 +257,21 @@ impl From<&str> for Value {
     #[inline]
     fn from(value: &str) -> Self {
         Self::String(value.into())
+    }
+}
+
+impl TryFrom<::serde_json::Value> for Value {
+    type Error = Error;
+
+    fn try_from(json: ::serde_json::Value) -> Result<Self, Self::Error> {
+        match json {
+            ::serde_json::Value::Null => Ok(Self::Null),
+            ::serde_json::Value::Bool(value) => Ok(Self::Bool(value)),
+            ::serde_json::Value::Number(value) => Ok(Self::Number(Number::Fixed(value))),
+            ::serde_json::Value::String(value) => Ok(Self::String(value)),
+            ::serde_json::Value::Array(vec) => bail!("Array type is not supported yet"),
+            ::serde_json::Value::Object(map) => bail!("Nested object type is not supported yet"),
+        }
     }
 }
 

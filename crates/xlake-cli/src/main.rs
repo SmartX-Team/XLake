@@ -3,9 +3,12 @@ mod args;
 use std::process::exit;
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use tracing::error;
 use xlake::PipeSession;
+
+#[global_allocator]
+static ALLOC: ::snmalloc_rs::SnMalloc = ::snmalloc_rs::SnMalloc;
 
 #[::tokio::main]
 async fn main() {
@@ -23,6 +26,10 @@ async fn main() {
 async fn try_main(args: self::args::Args) -> Result<()> {
     let self::args::Args { command, debug: _ } = args;
     let input = command.join(" ");
+    if input.trim().is_empty() {
+        <self::args::Args as CommandFactory>::command().print_help()?;
+        return Ok(());
+    }
 
     let session = PipeSession::default();
     session.call(&input).await?;

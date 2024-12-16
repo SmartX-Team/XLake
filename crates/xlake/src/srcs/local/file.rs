@@ -33,7 +33,12 @@ impl PipeNodeBuilder for FileSrcBuilder {
     fn output(&self) -> PipeEdge {
         PipeEdge {
             format: Some("stream".into()),
-            model: Some(vec!["binary".into(), "file".into(), "hash".into()]),
+            model: Some(vec![
+                "binary".into(),
+                "file".into(),
+                "hash".into(),
+                "stream".into(),
+            ]),
         }
     }
 
@@ -74,7 +79,7 @@ impl PipeSrc for FileSrc {
             FileCacheType::Content => content.await?.into(),
             FileCacheType::Path => {
                 let mut item = HashModelView::new(&path).into_any();
-                item.insert_future(content.boxed());
+                item.append_future(content.boxed());
                 item
             }
         };

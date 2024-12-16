@@ -1,3 +1,5 @@
+pub mod pdf;
+
 use core::{borrow, fmt};
 
 use anyhow::Error;
@@ -36,4 +38,8 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.content_raw().fmt(f)
     }
+}
+
+mod consts {
+    pub(super) const NAME: &str = "binary";
 }

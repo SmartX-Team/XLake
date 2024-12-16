@@ -38,5 +38,6 @@ xlake = { workspace = true, features = ["full"] }
 
 anyhow = { workspace = true }
 clap = { workspace = true }
+snmalloc-rs = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }

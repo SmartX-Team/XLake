@@ -190,6 +190,7 @@ dist
 /Makefile
 
 # Temporary files
+**/*.csv
 **/*.pdf
 **/*.ppt
 **/*.pptx

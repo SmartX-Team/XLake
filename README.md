@@ -1,8 +1,11 @@
 # XLake
 
-A [_GStreamer-like_](https://gstreamer.freedesktop.org/) Workflow Framework,
+A [_GStreamer-like_](https://gstreamer.freedesktop.org/) Real-Time Workflow Framework,
 supporting [_NVIDIA Omniverse_](https://www.nvidia.com/en-us/omniverse/solutions/digital-twins/), [_Python_](https://www.python.org/) and Web UI,
 powered by [_K8S_](https://kubernetes.io/) & [_Rust_](https://www.rust-lang.org/).
+
+It is focused on the real-time data streaming, NOT the batch streaming like [Data Lake](https://en.wikipedia.org/wiki/Data_lake).
+However, you can utilize the batch streaming as a [format & store](#save-a-file-into-the-storage) component in your real-time pipeline.
 
 It is under a heavy construction.
 Unfinished features may have significant changes in composition and usage.
@@ -31,16 +34,18 @@ Please read the [feature support](#feature-support) below carefully.
   - 🔲 slurm _([Slurm Workload Manager](https://slurm.schedmd.com/) for HPC)_
   - 🔲 terraform _([Terraform by HashiCorp](https://www.terraform.io/) for Cloud Providers)_
 - 🚧 **format** _(Data File Format)_
-  - 🔲 batch/ <i>([Data Table](<https://en.wikipedia.org/wiki/Table_(information)>), [Data Catalog](https://en.wikipedia.org/wiki/Database_catalog))</i>
-    - 🔲 [delta](https://github.com/delta-io/delta-rs) _([Delta Lake](https://delta.io/))_
-    - 🔲 [lance](https://github.com/lancedb/lance) _(100x faster random access than [Parquet](https://parquet.apache.org/))_
+  - 🔎 [batch](https://github.com/apache/datafusion) _([Apache DataFusion](https://datafusion.apache.org/))_'
+    - 🔲 SQL
   - ✅ stream _(In-Memory, by default)_
     - ✅ Dynamic type casting
     - ✅ [Lazy Evaluation](https://en.wikipedia.org/wiki/Lazy_evaluation)
 - 🚧 **model** _([Data Schema](https://en.wikipedia.org/wiki/Database_schema) & [Metadata](https://en.wikipedia.org/wiki/Metadata))_
   - 🚧 builtins/ _(Primitives)_
-    - 🔲 batch _(Auto-derived by the batch format)_
-      - 🔲 :sql
+    - 🔎 batch _(Auto-derived by the batch format)_
+      - 🔲 :group
+      - 🔲 :filter
+      - 🔲 :kmeans
+      - 🔎 :python
     - ✅ binary
     - 🔎 content
       - 🔎 :prompt _([LLM Prompt](https://openai.com/index/chatgpt/))_
@@ -51,6 +56,8 @@ Please read the [feature support](#feature-support) below carefully.
     - ✅ file
     - ✅ hash _(Hashable -> Storable)_
     - 🔲 metadata _(Nested, Unsafe, for additional description)_
+    - 🔎 stream _(Auto-derived by the stream format)_
+      - 🔎 :python
   - 🔲 document/ _([LibreOffice](https://www.libreoffice.org/), etc.)_
     - 🔲 email
     - 🔲 markdown
@@ -61,9 +68,9 @@ Please read the [feature support](#feature-support) below carefully.
     - 🔲 image
     - 🔲 video
   - 🔲 ml/ _(Machine Learning, not Artificial Intelligence)_
-    - torch _([PyTorch](https://pytorch.org/))_
-      - eval
-      - train
+    - 🔲 torch _([PyTorch](https://pytorch.org/))_
+      - 🔲 eval
+      - 🔲 train
   - 🔲 twin/ _([Digital Twin](https://en.wikipedia.org/wiki/Digital_twin))_
     - 🔲 loc _(Location)_
     - 🔲 rot _(Rotation)_
@@ -96,6 +103,9 @@ Please read the [feature support](#feature-support) below carefully.
   - 🔲 twin/ _([Digital Twin](https://en.wikipedia.org/wiki/Digital_twin))_
     - 🔲 omni _([NVIDIA Omniverse](https://www.nvidia.com/en-us/omniverse/))_
 - 🚧 **store** _([Object Store](https://docs.rs/object_store/latest/object_store/trait.ObjectStore.html), Cacheable)_
+  - 🔲 batch/
+    - 🔲 [delta](https://github.com/delta-io/delta-rs) _([Delta Lake](https://delta.io/))_
+    - 🔲 [lance](https://github.com/lancedb/lance) _(100x faster random access than [Parquet](https://parquet.apache.org/))_
   - 🔲 cdl _([Connected Data Lake](https://github.com/SmartX-Team/connected-data-lake))_
   - 🔲 cloud/
     - 🔲 gdrive _([Google Drive](https://workspace.google.com/products/drive/))_
@@ -144,6 +154,7 @@ sudo apt-get update && sudo apt-get install \
 
 # Install the latest rustc
 rustup default stable
+rustup update
 ```
 
 ## Usage

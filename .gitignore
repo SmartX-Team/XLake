@@ -162,6 +162,7 @@ dist
 **/tmp/
 
 # Temporary files
+**/*.csv
 **/*.pdf
 **/*.ppt
 **/*.pptx

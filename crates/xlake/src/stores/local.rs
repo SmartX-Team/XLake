@@ -33,7 +33,22 @@ impl PipeNodeBuilder for LocalStoreBuilder {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LocalStore {
+    #[serde(default = "LocalStore::default_path")]
     path: PathBuf,
+}
+
+impl LocalStore {
+    fn default_path() -> PathBuf {
+        "caches".parse().unwrap()
+    }
+}
+
+impl Default for LocalStore {
+    fn default() -> Self {
+        Self {
+            path: Self::default_path(),
+        }
+    }
 }
 
 impl LocalStore {

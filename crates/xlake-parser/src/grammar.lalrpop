@@ -26,9 +26,6 @@ PlanKind: PlanKind = {
     r"[a-z][_a-z0-9]*format" => PlanKind::Format {
         name: <>[..<>.len() - 4].into(),
     },
-    r"[a-z][_a-z0-9]*model" => PlanKind::Model {
-        name: <>[..<>.len() - 5].into(),
-    },
     r"[a-z][_a-z0-9]*sink" => PlanKind::Sink {
         name: <>[..<>.len() - 4].into(),
     },
@@ -75,7 +72,6 @@ Iden: &'input str = r"[a-z][_a-z0-9]*";
 
 match {
    r"[a-z][_a-z0-9]*format",
-   r"[a-z][_a-z0-9]*model",
    r"[a-z][_a-z0-9]*sink",
    r"[a-z][_a-z0-9]*src",
    r"[a-z][_a-z0-9]*store",

@@ -47,6 +47,32 @@ impl crate::PipeModelOwned<Self> for LazyObject {
 }
 
 impl LazyObject {
+    #[inline]
+    pub fn append_future<T>(&mut self, future: MaybeObject<T>)
+    where
+        T: 'static + Into<Object> + crate::PipeModelObject,
+    {
+        let future = future.map_ok(|value| value.into()).boxed();
+        match self.future.as_ref() {
+            Some(_) => {
+                let layer = ObjectLayer {
+                    content: Default::default(),
+                    future: Some(future),
+                    models: <T as crate::PipeModelObject>::__provides(),
+                };
+                self.layers.push(layer)
+            }
+            None => {
+                self.future.replace(future);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn append_layer(&mut self, layer: ObjectLayer) {
+        self.layers.push(layer)
+    }
+
     pub async fn flatten(mut self) -> Result<Self> {
         let () = self
             .layers
@@ -71,27 +97,6 @@ impl LazyObject {
             object.merge_without_future(&mut layer)
         }
         object
-    }
-
-    #[inline]
-    pub fn insert_future<T>(&mut self, future: MaybeObject<T>)
-    where
-        T: 'static + Into<Object> + crate::PipeModelObject,
-    {
-        let future = future.map_ok(|value| value.into()).boxed();
-        match self.future.as_ref() {
-            Some(_) => {
-                let layer = ObjectLayer {
-                    content: Default::default(),
-                    future: Some(future),
-                    models: <T as crate::PipeModelObject>::__provides(),
-                };
-                self.layers.push(layer)
-            }
-            None => {
-                self.future.replace(future);
-            }
-        }
     }
 
     pub(crate) fn is_ready(&self) -> bool {
@@ -137,6 +142,15 @@ impl ObjectLayer {
             content,
             future: None,
             models,
+        }
+    }
+
+    #[inline]
+    pub fn from_object_dyn(content: Object) -> Self {
+        Self {
+            content,
+            future: None,
+            models: Default::default(),
         }
     }
 
@@ -195,6 +209,10 @@ impl ObjectLayer {
             self.content.append(&mut *future.await?)
         }
         Ok(())
+    }
+
+    pub fn to_string_pretty(&self) -> Result<String> {
+        self.content.to_string_pretty()
     }
 }
 

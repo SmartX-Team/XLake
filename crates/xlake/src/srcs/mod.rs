@@ -1,2 +1,1 @@
-pub mod file;
-pub mod stdin;
+pub mod local;

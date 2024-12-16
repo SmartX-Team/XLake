@@ -34,6 +34,8 @@ anyhow = { version = "1.0", default-features = false, features = [
     "backtrace",
     "std",
 ] }
+arrow-json = { version = "53", default-features = false }
+async-tempfile = { version = "0.6", default-features = false }
 async-trait = { version = "0.1", default-features = false }
 blake2 = { version = "0.10", default-features = false, features = ["std"] }
 bs58 = { version = "0.5", default-features = false, features = ["std"] }
@@ -49,6 +51,19 @@ clap = { version = "4.5", default-features = false, features = [
     "usage",
 ] }
 cruet = { version = "0.14", default-features = false }
+datafusion = { version = "43", default-features = false, features = [
+    "array_expressions",
+    "compression",
+    "crypto_expressions",
+    "datetime_expressions",
+    "encoding_expressions",
+    "math_expressions",
+    "nested_expressions",
+    "regex_expressions",
+    "serde",
+    "string_expressions",
+    "unicode_expressions",
+] }
 digest = { version = "0.10", default-features = false, features = ["std"] }
 futures = { version = "0.3", default-features = false }
 lalrpop = { version = "0.22", default-features = false }
@@ -62,6 +77,7 @@ serde_with = { version = "3.11", default-features = false, features = [
     "macros",
     "std",
 ] }
+snmalloc-rs = { version = "0.3", features = ["lto", "native-cpu"] }
 syn = { version = "2.0", default-features = false, features = [
     "clone-impls",
     "derive",
@@ -71,3 +87,8 @@ syn = { version = "2.0", default-features = false, features = [
 ] }
 tokio = { version = "1.42", default-features = false }
 tracing = { version = "0.1", default-features = false, features = ["std"] }
+which = { version = "7.0", default-features = false, features = ["tracing"] }
+
+[profile.release]
+codegen-units = 1
+lto = true

@@ -31,17 +31,18 @@ impl PipeNodeBuilder for StdinSrcBuilder {
     fn output(&self) -> PipeEdge {
         PipeEdge {
             format: Some("stream".into()),
-            model: Some(vec!["doc".into(), "hash".into()]),
+            model: Some(vec!["doc".into(), "hash".into(), "stream".into()]),
         }
     }
 
-    async fn build(&self, _args: &PlanArguments) -> Result<PipeNodeImpl> {
-        Ok(PipeNodeImpl::Src(Box::new(StdinSrc)))
+    async fn build(&self, args: &PlanArguments) -> Result<PipeNodeImpl> {
+        let imp: StdinSrc = args.to()?;
+        Ok(PipeNodeImpl::Src(Box::new(imp)))
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct StdinSrc;
+pub struct StdinSrc {}
 
 #[async_trait]
 impl PipeSrc for StdinSrc {
