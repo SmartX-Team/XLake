@@ -25,6 +25,8 @@ Please read the [feature support](#feature-support) below carefully.
 | Model Function's Usage | e.g. **model**/builtin/<ins>doc\:split</ins> -> <ins>doc:split</ins>                                                                   |
 | Status                 | ✅ Yes 🚧 WIP 🔎 TBA 🔲 TBD                                                                                                            |
 
+- 🚧 **batch** _(Data File Format)_
+  - 🚧 [datafusion](https://github.com/apache/datafusion) _([Apache DataFusion](https://datafusion.apache.org/), by default)_
 - 🔎 **cluster** _([Parallel Computing](https://en.wikipedia.org/wiki/Parallel_computing) on [HPC](https://en.wikipedia.org/wiki/High-performance_computing))_
   - 🔎 local _(Current Process; by default)_
   - 🔲 ray _([Ray Cluster](https://www.ray.io/); Python-only)_
@@ -33,8 +35,6 @@ Please read the [feature support](#feature-support) below carefully.
   - 🔎 local _(Host Machine; by default)_
   - 🔲 slurm _([Slurm Workload Manager](https://slurm.schedmd.com/) for HPC)_
   - 🔲 terraform _([Terraform by HashiCorp](https://www.terraform.io/) for Cloud Providers)_
-- 🚧 **stream** _(Data File Format)_
-  - 🚧 [datafusion](https://github.com/apache/datafusion) _([Apache DataFusion](https://datafusion.apache.org/), by default)_
 - 🚧 **model** _([Data Schema](https://en.wikipedia.org/wiki/Database_schema) & [Metadata](https://en.wikipedia.org/wiki/Metadata))_
   - 🚧 builtins/ _(Primitives)_
     - 🔎 batch _(Auto-derived by the batch)_
@@ -108,7 +108,7 @@ Please read the [feature support](#feature-support) below carefully.
     - 🔲 s3 _([Amazon S3](https://aws.amazon.com/ko/s3/))_
       - 🔲 [Multipart upload API](https://docs.rs/object_store/latest/object_store/multipart/trait.MultipartStore.html)
   - ✅ local _(FileSystem)_
-- 🚧 **stream** _(Data File Format)_
+- 🚧 **stream** _(Data Streaming & Messaging System)_
   - 🔲 kafka _([Apache Kafka](https://kafka.apache.org/))_
   - ✅ memory _(In-Memory, by default)_
     - ✅ Dynamic type casting
