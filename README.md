@@ -26,7 +26,7 @@ Please read the [feature support](#feature-support) below carefully.
 | Status                 | ✅ Yes 🚧 WIP 🔎 TBA 🔲 TBD                                                                                                            |
 
 - 🚧 **batch** _(Data File Format)_
-  - 🚧 [datafusion](https://github.com/apache/datafusion) _([Apache DataFusion](https://datafusion.apache.org/), by default)_
+  - 🚧 [datafusion](https://github.com/apache/datafusion) _([Apache DataFusion](https://datafusion.apache.org/); by default)_
 - 🔎 **cluster** _([Parallel Computing](https://en.wikipedia.org/wiki/Parallel_computing) on [HPC](https://en.wikipedia.org/wiki/High-performance_computing))_
   - 🔎 local _(Current Process; by default)_
   - 🔲 ray _([Ray Cluster](https://www.ray.io/); Python-only)_
@@ -110,7 +110,7 @@ Please read the [feature support](#feature-support) below carefully.
   - ✅ local _(FileSystem)_
 - 🚧 **stream** _(Data Streaming & Messaging System)_
   - 🔲 kafka _([Apache Kafka](https://kafka.apache.org/))_
-  - ✅ memory _(In-Memory, by default)_
+  - ✅ memory _(In-Memory; by default)_
     - ✅ Dynamic type casting
     - ✅ [Lazy Evaluation](https://en.wikipedia.org/wiki/Lazy_evaluation)
   - 🔲 nats _([An Edge & Cloud Native Messaging System](https://nats.io/))_
