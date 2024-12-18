@@ -139,6 +139,10 @@ Please read the [feature support](#feature-support) below carefully.
       - 🔲 Interactive Pipeline Composition
       - 🔲 Run & Stop
       - 🔲 Save as YAML templates
+    - 🔲 Interactive Office
+      - 🔲 Graphviz to Pipeline
+      - 🔲 Sketch to Graphviz
+      - 🔲 Voice to Graphviz
     - 🔲 Job Scheduling
     - 🔲 Storage Management
   - 🔲 [Helm Chart](https://helm.sh/)
