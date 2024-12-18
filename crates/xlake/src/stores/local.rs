@@ -5,19 +5,19 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use xlake_ast::{Object, PlanArguments, PlanKind};
-use xlake_core::{models::hash::Hash, PipeNodeBuilder, PipeNodeImpl, PipeStore};
+use xlake_core::{models::hash::Hash, PipeNodeFactory, PipeNodeImpl, PipeStore};
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct LocalStoreBuilder;
+pub struct LocalStoreFactory;
 
-impl fmt::Display for LocalStoreBuilder {
+impl fmt::Display for LocalStoreFactory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for LocalStoreBuilder {
+impl PipeNodeFactory for LocalStoreFactory {
     fn kind(&self) -> PlanKind {
         PlanKind::Store { name: self.name() }
     }

@@ -7,20 +7,20 @@ use serde::{Deserialize, Serialize};
 use xlake_ast::{PlanArguments, PlanKind};
 use xlake_core::{
     batch::{DataFusionBatch, DEFAULT_TABLE_REF},
-    PipeChannel, PipeEdge, PipeNodeBuilder, PipeNodeImpl, PipeSrc,
+    PipeChannel, PipeEdge, PipeNodeFactory, PipeNodeImpl, PipeSrc,
 };
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct CsvSrcBuilder;
+pub struct CsvSrcFactory;
 
-impl fmt::Display for CsvSrcBuilder {
+impl fmt::Display for CsvSrcFactory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for CsvSrcBuilder {
+impl PipeNodeFactory for CsvSrcFactory {
     fn kind(&self) -> PlanKind {
         PlanKind::Src { name: self.name() }
     }

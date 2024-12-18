@@ -10,9 +10,9 @@ use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 use xlake_ast::{PlanArguments, PlanKind};
 
-use crate::{object::LazyObject, PipeEdge, PipeNodeBuilder, PipeNodeImpl};
+use crate::{object::LazyObject, PipeEdge, PipeNodeFactory, PipeNodeImpl};
 
-pub type DefaultStreamBuilder = MemoryStreamBuilder;
+pub type DefaultStreamFactory = MemoryStreamFactory;
 pub type DefaultStream = MemoryStream;
 
 pub const NAME: &str = "memory";
@@ -25,16 +25,16 @@ pub trait PipeStream: Send + fmt::Debug {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct MemoryStreamBuilder;
+pub struct MemoryStreamFactory;
 
-impl fmt::Display for MemoryStreamBuilder {
+impl fmt::Display for MemoryStreamFactory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for MemoryStreamBuilder {
+impl PipeNodeFactory for MemoryStreamFactory {
     fn kind(&self) -> PlanKind {
         PlanKind::Batch { name: self.name() }
     }

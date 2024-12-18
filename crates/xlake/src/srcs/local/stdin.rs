@@ -6,22 +6,22 @@ use serde::{Deserialize, Serialize};
 use tokio::io::{self, AsyncReadExt};
 use xlake_ast::{PlanArguments, PlanKind};
 use xlake_core::{
-    models::hash::HashModelView, PipeChannel, PipeEdge, PipeNodeBuilder, PipeNodeImpl, PipeSrc,
+    models::hash::HashModelView, PipeChannel, PipeEdge, PipeNodeFactory, PipeNodeImpl, PipeSrc,
 };
 
 use crate::models::builtins::doc::DocModelObject;
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct StdinSrcBuilder;
+pub struct StdinSrcFactory;
 
-impl fmt::Display for StdinSrcBuilder {
+impl fmt::Display for StdinSrcFactory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for StdinSrcBuilder {
+impl PipeNodeFactory for StdinSrcFactory {
     fn kind(&self) -> PlanKind {
         PlanKind::Src { name: self.name() }
     }

@@ -11,19 +11,19 @@ use std::{
 use anyhow::{anyhow, bail, Context, Result};
 use tracing::debug;
 use xlake_ast::{Plan, PlanKind};
-use xlake_core::{PipeEdge, PipeNode, PipeNodeBuilder, PipeNodeImpl, PipeStoreExt};
+use xlake_core::{PipeEdge, PipeNode, PipeNodeFactory, PipeNodeImpl, PipeStoreExt};
 use xlake_parser::SeqParser;
 
 #[derive(Debug)]
 pub struct PipeSession {
-    builders: BTreeMap<PlanKind, Box<dyn PipeNodeBuilder>>,
+    factories: BTreeMap<PlanKind, Box<dyn PipeNodeFactory>>,
     parser: SeqParser,
 }
 
 impl Default for PipeSession {
     fn default() -> Self {
         let mut session = Self::empty();
-        session.add_builtin_builders();
+        session.add_builtin_factories();
         session
     }
 }
@@ -31,29 +31,29 @@ impl Default for PipeSession {
 impl PipeSession {
     pub fn empty() -> Self {
         Self {
-            builders: Default::default(),
+            factories: Default::default(),
             parser: Default::default(),
         }
     }
 
-    fn add_builtin_builders(&mut self) {
+    fn add_builtin_factories(&mut self) {
         // Defaults
-        self.insert_builder(Box::new(::xlake_core::batch::DefaultBatchBuilder::default()));
-        self.insert_builder(Box::new(
-            ::xlake_core::stream::DefaultStreamBuilder::default(),
+        self.insert_factory(Box::new(::xlake_core::batch::DefaultBatchFactory::default()));
+        self.insert_factory(Box::new(
+            ::xlake_core::stream::DefaultStreamFactory::default(),
         ));
 
         #[cfg(feature = "libreoffice")]
-        self.insert_builder(Box::new(self::models::builtins::binary::pdf::PdfBuilder));
+        self.insert_factory(Box::new(self::models::builtins::binary::pdf::PdfFactory));
         #[cfg(feature = "io-std")]
-        self.insert_builder(Box::new(self::sinks::local::stdout::StdoutSinkBuilder));
-        self.insert_builder(Box::new(self::srcs::local::csv::CsvSrcBuilder));
+        self.insert_factory(Box::new(self::sinks::local::stdout::StdoutSinkFactory));
+        self.insert_factory(Box::new(self::srcs::local::csv::CsvSrcFactory));
         #[cfg(feature = "fs")]
-        self.insert_builder(Box::new(self::srcs::local::file::FileSrcBuilder));
+        self.insert_factory(Box::new(self::srcs::local::file::FileSrcFactory));
         #[cfg(feature = "io-std")]
-        self.insert_builder(Box::new(self::srcs::local::stdin::StdinSrcBuilder));
+        self.insert_factory(Box::new(self::srcs::local::stdin::StdinSrcFactory));
         #[cfg(feature = "fs")]
-        self.insert_builder(Box::new(self::stores::local::LocalStoreBuilder));
+        self.insert_factory(Box::new(self::stores::local::LocalStoreFactory));
     }
 
     pub async fn call(&self, input: &str) -> Result<()> {
@@ -77,8 +77,8 @@ impl PipeSession {
             debug!("Initialize index {index} @ plan {kind}");
             let type_name = kind.type_name();
 
-            let builder = match self.builders.get(&kind) {
-                Some(builder) => builder,
+            let factory = match self.factories.get(&kind) {
+                Some(factory) => factory,
                 None => bail!("No such {type_name}: '{kind}'"),
             };
 
@@ -86,7 +86,7 @@ impl PipeSession {
                 batch: output_batch,
                 model: output_model,
                 stream: output_stream,
-            } = builder.input();
+            } = factory.input();
 
             debug!("sequence.{index}.{kind}.pre: '{args:?}'");
             {
@@ -118,7 +118,7 @@ impl PipeSession {
                 batch: output_batch,
                 model: output_model,
                 stream: output_stream,
-            } = builder.output();
+            } = factory.output();
 
             {
                 debug!("sequence.{index}.{kind}.post.batch: {output_batch:?}");
@@ -133,7 +133,7 @@ impl PipeSession {
                 input_stream = output_stream;
             }
 
-            let imp = builder.build(&args).await?;
+            let imp = factory.build(&args).await?;
             let imp_type_name = imp.type_name();
             if imp_type_name != type_name {
                 bail!("Unexpected node: expected {type_name:?}, but given {imp_type_name:?}")
@@ -204,11 +204,11 @@ impl PipeSession {
         Ok(())
     }
 
-    fn collect_builders<'a>(
+    fn collect_factories<'a>(
         &self,
         iter: impl Iterator<Item = &'a String>,
         type_name: ValidatableTypeName,
-    ) -> Result<Vec<&dyn PipeNodeBuilder>> {
+    ) -> Result<Vec<&dyn PipeNodeFactory>> {
         iter.cloned()
             .map(|name| match type_name {
                 ValidatableTypeName::Batch => PlanKind::Batch { name },
@@ -216,19 +216,19 @@ impl PipeSession {
                 ValidatableTypeName::Stream => PlanKind::Stream { name },
             })
             .map(|ref kind| {
-                self.builders
+                self.factories
                     .get(kind)
-                    .map(|builder| &**builder)
+                    .map(|factory| &**factory)
                     .with_context(|| format!("No such {type_name}: {kind}"))
             })
             .collect()
     }
 
-    pub fn insert_builder(
+    pub fn insert_factory(
         &mut self,
-        builder: Box<dyn PipeNodeBuilder>,
-    ) -> Option<Box<dyn PipeNodeBuilder>> {
-        self.builders.insert(builder.kind(), builder)
+        factory: Box<dyn PipeNodeFactory>,
+    ) -> Option<Box<dyn PipeNodeFactory>> {
+        self.factories.insert(factory.kind(), factory)
     }
 
     fn validate_types<'a>(
@@ -237,8 +237,8 @@ impl PipeSession {
         outputs: impl Iterator<Item = &'a String>,
         type_name: ValidatableTypeName,
     ) -> Result<()> {
-        // let input_builders: Vec<_> = self.collect_builders(inputs, type_name)?;
-        // let outputs_builders: Vec<_> = self.collect_builders(outputs, type_name)?;
+        // let input_factories: Vec<_> = self.collect_factories(inputs, type_name)?;
+        // let outputs_factories: Vec<_> = self.collect_factories(outputs, type_name)?;
         // TODO: to be implemented (validate)
         Ok(())
     }

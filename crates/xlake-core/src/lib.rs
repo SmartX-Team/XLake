@@ -237,7 +237,7 @@ impl Default for PipeEdge {
 }
 
 #[async_trait]
-pub trait PipeNodeBuilder: fmt::Debug {
+pub trait PipeNodeFactory: fmt::Debug {
     fn kind(&self) -> PlanKind;
 
     fn name(&self) -> String;

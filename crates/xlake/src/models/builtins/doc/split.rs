@@ -5,21 +5,21 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use xlake_ast::{PlanArguments, PlanKind};
-use xlake_core::{PipeChannel, PipeEdge, PipeFunc, PipeNodeBuilder, PipeNodeImpl};
+use xlake_core::{PipeChannel, PipeEdge, PipeFunc, PipeNodeFactory, PipeNodeImpl};
 
 use super::DocModelView;
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct SplitBuilder;
+pub struct SplitFactory;
 
-impl fmt::Display for SplitBuilder {
+impl fmt::Display for SplitFactory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for SplitBuilder {
+impl PipeNodeFactory for SplitFactory {
     fn kind(&self) -> PlanKind {
         PlanKind::Func {
             model_name: super::consts::NAME.into(),

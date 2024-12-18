@@ -7,23 +7,23 @@ use serde::{Deserialize, Serialize};
 use tokio::fs;
 use xlake_ast::{PlanArguments, PlanKind};
 use xlake_core::{
-    models::hash::HashModelView, PipeChannel, PipeEdge, PipeModelOwnedExt, PipeNodeBuilder,
+    models::hash::HashModelView, PipeChannel, PipeEdge, PipeModelOwnedExt, PipeNodeFactory,
     PipeNodeImpl, PipeSrc,
 };
 
 use crate::models::builtins::{binary::BinaryModelObject, file::FileModelView};
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct FileSrcBuilder;
+pub struct FileSrcFactory;
 
-impl fmt::Display for FileSrcBuilder {
+impl fmt::Display for FileSrcFactory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for FileSrcBuilder {
+impl PipeNodeFactory for FileSrcFactory {
     fn kind(&self) -> PlanKind {
         PlanKind::Src { name: self.name() }
     }

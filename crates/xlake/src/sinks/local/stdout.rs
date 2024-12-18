@@ -6,22 +6,22 @@ use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use xlake_ast::{PlanArguments, PlanKind};
 use xlake_core::{
-    object::LazyObject, PipeChannel, PipeModelOwnedExt, PipeNodeBuilder, PipeNodeImpl, PipeSink,
+    object::LazyObject, PipeChannel, PipeModelOwnedExt, PipeNodeFactory, PipeNodeImpl, PipeSink,
 };
 
 use crate::models::builtins::{binary::BinaryModelView, doc::DocModelView};
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct StdoutSinkBuilder;
+pub struct StdoutSinkFactory;
 
-impl fmt::Display for StdoutSinkBuilder {
+impl fmt::Display for StdoutSinkFactory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for StdoutSinkBuilder {
+impl PipeNodeFactory for StdoutSinkFactory {
     fn kind(&self) -> PlanKind {
         PlanKind::Sink { name: self.name() }
     }

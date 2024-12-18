@@ -11,7 +11,7 @@ use which::which;
 use xlake_ast::{PlanArguments, PlanKind};
 use xlake_core::{
     object::LazyObject, PipeChannel, PipeEdge, PipeFunc, PipeModelOwned, PipeModelOwnedExt,
-    PipeNodeBuilder, PipeNodeImpl,
+    PipeNodeFactory, PipeNodeImpl,
 };
 
 use crate::models::builtins::file::FileModelView;
@@ -19,16 +19,16 @@ use crate::models::builtins::file::FileModelView;
 use super::BinaryModelView;
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct PdfBuilder;
+pub struct PdfFactory;
 
-impl fmt::Display for PdfBuilder {
+impl fmt::Display for PdfFactory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for PdfBuilder {
+impl PipeNodeFactory for PdfFactory {
     fn kind(&self) -> PlanKind {
         PlanKind::Func {
             model_name: super::consts::NAME.into(),

@@ -14,9 +14,9 @@ use futures::{stream, Stream, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use xlake_ast::{Object, PlanArguments, PlanKind, Value};
 
-use crate::{object::ObjectLayer, stream::DefaultStream, PipeEdge, PipeNodeBuilder, PipeNodeImpl};
+use crate::{object::ObjectLayer, stream::DefaultStream, PipeEdge, PipeNodeFactory, PipeNodeImpl};
 
-pub type DefaultBatchBuilder = DataFusionBatchBuilder;
+pub type DefaultBatchFactory = DataFusionBatchFactory;
 pub type DefaultBatch = DataFusionBatch;
 
 pub const DEFAULT_TABLE_REF: &str = "default";
@@ -30,16 +30,16 @@ pub trait PipeBatch: Send + fmt::Debug {
 }
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct DataFusionBatchBuilder;
+pub struct DataFusionBatchFactory;
 
-impl fmt::Display for DataFusionBatchBuilder {
+impl fmt::Display for DataFusionBatchFactory {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for DataFusionBatchBuilder {
+impl PipeNodeFactory for DataFusionBatchFactory {
     fn kind(&self) -> PlanKind {
         PlanKind::Batch { name: self.name() }
     }
