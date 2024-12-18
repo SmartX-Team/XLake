@@ -45,14 +45,14 @@ impl PipeNodeFactory for MemoryStreamFactory {
 
     fn input(&self) -> PipeEdge {
         PipeEdge {
-            model: Some(vec![self.name()]),
+            model: Some(vec!["stream".into()]),
             ..Default::default()
         }
     }
 
     fn output(&self) -> PipeEdge {
         PipeEdge {
-            model: Some(vec![self.name()]),
+            model: Some(vec!["stream".into()]),
             stream: self.name(),
             ..Default::default()
         }

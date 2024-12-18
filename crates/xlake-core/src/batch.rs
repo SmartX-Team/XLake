@@ -50,7 +50,7 @@ impl PipeNodeFactory for DataFusionBatchFactory {
 
     fn input(&self) -> PipeEdge {
         PipeEdge {
-            model: Some(vec![self.name()]),
+            model: Some(vec!["batch".into()]),
             ..Default::default()
         }
     }
@@ -58,7 +58,7 @@ impl PipeNodeFactory for DataFusionBatchFactory {
     fn output(&self) -> PipeEdge {
         PipeEdge {
             batch: self.name(),
-            model: Some(vec![self.name()]),
+            model: Some(vec!["batch".into()]),
             ..Default::default()
         }
     }
