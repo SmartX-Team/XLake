@@ -33,15 +33,11 @@ Please read the [feature support](#feature-support) below carefully.
   - 🔎 local _(Host Machine; by default)_
   - 🔲 slurm _([Slurm Workload Manager](https://slurm.schedmd.com/) for HPC)_
   - 🔲 terraform _([Terraform by HashiCorp](https://www.terraform.io/) for Cloud Providers)_
-- 🚧 **format** _(Data File Format)_
-  - 🔎 [batch](https://github.com/apache/datafusion) _([Apache DataFusion](https://datafusion.apache.org/))_
-    - 🔲 SQL
-  - ✅ stream _(In-Memory, by default)_
-    - ✅ Dynamic type casting
-    - ✅ [Lazy Evaluation](https://en.wikipedia.org/wiki/Lazy_evaluation)
+- 🚧 **stream** _(Data File Format)_
+  - 🚧 [datafusion](https://github.com/apache/datafusion) _([Apache DataFusion](https://datafusion.apache.org/), by default)_
 - 🚧 **model** _([Data Schema](https://en.wikipedia.org/wiki/Database_schema) & [Metadata](https://en.wikipedia.org/wiki/Metadata))_
   - 🚧 builtins/ _(Primitives)_
-    - 🔎 batch _(Auto-derived by the batch format)_
+    - 🔎 batch _(Auto-derived by the batch)_
       - 🔲 :group
       - 🔲 :filter
       - 🔲 :kmeans
@@ -56,7 +52,7 @@ Please read the [feature support](#feature-support) below carefully.
     - ✅ file
     - ✅ hash _(Hashable -> Storable)_
     - 🔲 metadata _(Nested, Unsafe, for additional description)_
-    - 🔎 stream _(Auto-derived by the stream format)_
+    - 🔎 stream _(Auto-derived by the stream)_
       - 🔎 :python
   - 🔲 document/ _([LibreOffice](https://www.libreoffice.org/), etc.)_
     - 🔲 email
@@ -112,6 +108,12 @@ Please read the [feature support](#feature-support) below carefully.
     - 🔲 s3 _([Amazon S3](https://aws.amazon.com/ko/s3/))_
       - 🔲 [Multipart upload API](https://docs.rs/object_store/latest/object_store/multipart/trait.MultipartStore.html)
   - ✅ local _(FileSystem)_
+- 🚧 **stream** _(Data File Format)_
+  - 🔲 kafka _([Apache Kafka](https://kafka.apache.org/))_
+  - ✅ memory _(In-Memory, by default)_
+    - ✅ Dynamic type casting
+    - ✅ [Lazy Evaluation](https://en.wikipedia.org/wiki/Lazy_evaluation)
+  - 🔲 nats _([An Edge & Cloud Native Messaging System](https://nats.io/))_
 
 ### User Interfaces
 
