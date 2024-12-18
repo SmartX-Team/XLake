@@ -23,15 +23,17 @@ impl fmt::Display for StdinSrcBuilder {
 #[async_trait]
 impl PipeNodeBuilder for StdinSrcBuilder {
     fn kind(&self) -> PlanKind {
-        PlanKind::Src {
-            name: "stdin".into(),
-        }
+        PlanKind::Src { name: self.name() }
+    }
+
+    fn name(&self) -> String {
+        "stdin".into()
     }
 
     fn output(&self) -> PipeEdge {
         PipeEdge {
-            format: Some("stream".into()),
-            model: Some(vec!["doc".into(), "hash".into(), "stream".into()]),
+            model: Some(vec!["doc".into(), "hash".into()]),
+            ..Default::default()
         }
     }
 
@@ -52,6 +54,6 @@ impl PipeSrc for StdinSrc {
 
         let item = DocModelObject { document };
         let item = HashModelView::try_from(item)?;
-        PipeChannel::stream_unit(item)
+        Ok(PipeChannel::from_unit(item))
     }
 }

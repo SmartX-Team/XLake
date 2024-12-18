@@ -23,9 +23,11 @@ impl fmt::Display for StdoutSinkBuilder {
 #[async_trait]
 impl PipeNodeBuilder for StdoutSinkBuilder {
     fn kind(&self) -> PlanKind {
-        PlanKind::Sink {
-            name: "stdout".into(),
-        }
+        PlanKind::Sink { name: self.name() }
+    }
+
+    fn name(&self) -> String {
+        "stdout".into()
     }
 
     async fn build(&self, args: &PlanArguments) -> Result<PipeNodeImpl> {
@@ -40,7 +42,7 @@ pub struct StdoutSink {}
 #[async_trait]
 impl PipeSink for StdoutSink {
     async fn call(&self, channel: PipeChannel) -> Result<()> {
-        let mut iter = channel.async_iter::<LazyObject>().await?;
+        let mut iter = channel.into_stream::<LazyObject>().await?;
         while let Some(item) = iter.try_next().await? {
             let item = item.flatten().await?;
             let item = match item.view::<DocModelView>() {

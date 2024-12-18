@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, fmt, mem, ops, pin::Pin};
+use std::{fmt, ops, pin::Pin};
 
 use anyhow::{bail, Result};
 use arrow_json::JsonSerializable;
@@ -14,49 +14,59 @@ use futures::{stream, Stream, StreamExt, TryStreamExt};
 use serde::{Deserialize, Serialize};
 use xlake_ast::{Object, PlanArguments, PlanKind, Value};
 
-use crate::{
-    object::{LazyObject, ObjectLayer},
-    PipeEdge, PipeFormat, PipeNodeBuilder, PipeNodeImpl,
-};
+use crate::{object::ObjectLayer, stream::DefaultStream, PipeEdge, PipeNodeBuilder, PipeNodeImpl};
 
-use super::stream::StreamFormat;
+pub type DefaultBatchBuilder = DataFusionBatchBuilder;
+pub type DefaultBatch = DataFusionBatch;
+
+pub const DEFAULT_TABLE_REF: &str = "default";
+pub const NAME: &str = "datafusion";
+
+#[async_trait]
+pub trait PipeBatch: Send + fmt::Debug {
+    async fn to_default(&mut self) -> Result<DefaultBatch>;
+
+    async fn to_stream(&mut self) -> Result<DefaultStream>;
+}
 
 #[derive(Copy, Clone, Debug, Default)]
-pub struct BatchBuilder;
+pub struct DataFusionBatchBuilder;
 
-impl fmt::Display for BatchBuilder {
+impl fmt::Display for DataFusionBatchBuilder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.kind().fmt(f)
     }
 }
 
 #[async_trait]
-impl PipeNodeBuilder for BatchBuilder {
+impl PipeNodeBuilder for DataFusionBatchBuilder {
     fn kind(&self) -> PlanKind {
-        PlanKind::Format {
-            name: "datafusion".into(),
-        }
+        PlanKind::Batch { name: self.name() }
+    }
+
+    fn name(&self) -> String {
+        NAME.into()
     }
 
     fn input(&self) -> PipeEdge {
         PipeEdge {
-            format: Some("stream".into()),
-            model: Some(vec!["batch".into(), "stream".into()]),
+            model: Some(vec![self.name()]),
+            ..Default::default()
         }
     }
 
     fn output(&self) -> PipeEdge {
         PipeEdge {
-            format: Some("batch".into()),
-            model: Some(vec!["batch".into(), "stream".into()]),
+            batch: self.name(),
+            model: Some(vec![self.name()]),
             ..Default::default()
         }
     }
 
     async fn build(&self, args: &PlanArguments) -> Result<PipeNodeImpl> {
         let args: BatchFormatArgs = args.to()?;
-        let imp = BatchFormat::new(args);
-        Ok(PipeNodeImpl::Format(Box::new(imp)))
+        let imp = DataFusionBatch::new(args);
+        Ok(PipeNodeImpl::Batch(Box::new(imp)))
     }
 }
 
@@ -64,32 +74,28 @@ impl PipeNodeBuilder for BatchBuilder {
 pub struct BatchFormatArgs {}
 
 #[derive(Default)]
-pub struct BatchFormat {
+pub struct DataFusionBatch {
     args: BatchFormatArgs,
     ctx: SessionContext,
-    new: VecDeque<LazyObject>,
 }
 
-impl BatchFormat {
-    pub const DEFAULT_TABLE_REF: &str = "default";
-
+impl DataFusionBatch {
     fn new(args: BatchFormatArgs) -> Self {
         Self {
             args,
             ctx: Default::default(),
-            new: Default::default(),
         }
     }
 }
 
-impl fmt::Debug for BatchFormat {
+impl fmt::Debug for DataFusionBatch {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.args.fmt(f)
     }
 }
 
-impl ops::Deref for BatchFormat {
+impl ops::Deref for DataFusionBatch {
     type Target = SessionContext;
 
     #[inline]
@@ -98,7 +104,7 @@ impl ops::Deref for BatchFormat {
     }
 }
 
-impl ops::DerefMut for BatchFormat {
+impl ops::DerefMut for DataFusionBatch {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.ctx
@@ -106,27 +112,17 @@ impl ops::DerefMut for BatchFormat {
 }
 
 #[async_trait]
-impl PipeFormat for BatchFormat {
-    #[inline]
-    fn extend_one(&mut self, item: LazyObject) {
-        self.new.push_back(item)
-    }
-
-    async fn batch(&mut self) -> Result<Self> {
-        let Self { args, ctx, new } = self;
+impl PipeBatch for DataFusionBatch {
+    async fn to_default(&mut self) -> Result<Self> {
+        let Self { args, ctx } = self;
         Ok(Self {
             args: args.clone(),
             ctx: ctx.clone(),
-            new: {
-                let mut buf = Default::default();
-                mem::swap(&mut buf, new);
-                buf
-            },
         })
     }
 
-    async fn stream(&mut self) -> Result<StreamFormat> {
-        let df = self.ctx.table(Self::DEFAULT_TABLE_REF).await?;
+    async fn to_stream(&mut self) -> Result<DefaultStream> {
+        let df = self.ctx.table(DEFAULT_TABLE_REF).await?;
         let stream = df.execute_stream().await?;
         let stream = stream
             .map_err(Into::into)
@@ -135,7 +131,7 @@ impl PipeFormat for BatchFormat {
             .map_ok(ObjectLayer::from_object_dyn)
             .map_ok(Into::into)
             .boxed();
-        Ok(StreamFormat::new(stream, &mut self.new))
+        Ok(DefaultStream::from_stream(stream))
     }
 }
 

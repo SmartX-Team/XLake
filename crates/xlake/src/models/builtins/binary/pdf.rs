@@ -32,8 +32,12 @@ impl PipeNodeBuilder for PdfBuilder {
     fn kind(&self) -> PlanKind {
         PlanKind::Func {
             model_name: super::consts::NAME.into(),
-            func: "pdf".into(),
+            func: self.name(),
         }
+    }
+
+    fn name(&self) -> String {
+        "pdf".into()
     }
 
     fn input(&self) -> PipeEdge {
@@ -154,7 +158,7 @@ impl PdfFunc {
 impl PipeFunc for PdfFunc {
     async fn call(&self, channel: PipeChannel) -> Result<PipeChannel> {
         channel
-            .async_iter()
+            .into_stream()
             .await?
             .and_then(|item| self.convert(item))
             .try_collect()

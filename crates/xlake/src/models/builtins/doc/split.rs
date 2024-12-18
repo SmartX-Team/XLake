@@ -23,8 +23,12 @@ impl PipeNodeBuilder for SplitBuilder {
     fn kind(&self) -> PlanKind {
         PlanKind::Func {
             model_name: super::consts::NAME.into(),
-            func: "split".into(),
+            func: self.name(),
         }
+    }
+
+    fn name(&self) -> String {
+        "split".into()
     }
 
     fn input(&self) -> PipeEdge {
@@ -53,7 +57,7 @@ pub struct SplitFunc {}
 #[async_trait]
 impl PipeFunc for SplitFunc {
     async fn call(&self, channel: PipeChannel) -> Result<PipeChannel> {
-        let mut iter = channel.async_iter::<DocModelView>().await?;
+        let mut iter = channel.into_stream::<DocModelView>().await?;
         while let Some(item) = iter.next().await {}
         todo!()
     }

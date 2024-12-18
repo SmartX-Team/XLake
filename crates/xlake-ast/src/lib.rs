@@ -17,23 +17,25 @@ pub struct Plan {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum PlanKind {
-    Format { name: String },
+    Batch { name: String },
     Func { model_name: String, func: String },
     Model { name: String },
     Sink { name: String },
     Src { name: String },
     Store { name: String },
+    Stream { name: String },
 }
 
 impl fmt::Display for PlanKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Func { model_name, func } => write!(f, "{model_name}:{func}"),
-            Self::Format { name }
+            Self::Batch { name }
             | Self::Model { name }
             | Self::Sink { name }
             | Self::Src { name }
-            | Self::Store { name } => {
+            | Self::Store { name }
+            | Self::Stream { name } => {
                 let type_name = self.type_name();
                 write!(f, "{name}{type_name}")
             }
@@ -44,24 +46,26 @@ impl fmt::Display for PlanKind {
 impl PlanKind {
     pub const fn type_name(&self) -> PlanType {
         match self {
-            Self::Format { .. } => PlanType::Format,
+            Self::Batch { .. } => PlanType::Batch,
             Self::Func { .. } => PlanType::Func,
             Self::Model { .. } => PlanType::Model,
             Self::Sink { .. } => PlanType::Sink,
             Self::Src { .. } => PlanType::Src,
             Self::Store { .. } => PlanType::Store,
+            Self::Stream { .. } => PlanType::Stream,
         }
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum PlanType {
-    Format,
+    Batch,
     Func,
     Model,
     Sink,
     Src,
     Store,
+    Stream,
 }
 
 impl fmt::Debug for PlanType {
@@ -81,12 +85,13 @@ impl fmt::Display for PlanType {
 impl PlanType {
     pub const fn as_str(&self) -> &'static str {
         match self {
-            Self::Format => "format",
+            Self::Batch => "batch",
             Self::Func => "function",
             Self::Model => "model",
             Self::Sink => "sink",
             Self::Src => "src",
             Self::Store => "store",
+            Self::Stream => "stream",
         }
     }
 }
@@ -269,8 +274,8 @@ impl TryFrom<::serde_json::Value> for Value {
             ::serde_json::Value::Bool(value) => Ok(Self::Bool(value)),
             ::serde_json::Value::Number(value) => Ok(Self::Number(Number::Fixed(value))),
             ::serde_json::Value::String(value) => Ok(Self::String(value)),
-            ::serde_json::Value::Array(vec) => bail!("Array type is not supported yet"),
-            ::serde_json::Value::Object(map) => bail!("Nested object type is not supported yet"),
+            ::serde_json::Value::Array(_) => bail!("Array type is not supported yet"),
+            ::serde_json::Value::Object(_) => bail!("Nested object type is not supported yet"),
         }
     }
 }

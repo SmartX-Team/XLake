@@ -25,20 +25,22 @@ impl fmt::Display for FileSrcBuilder {
 #[async_trait]
 impl PipeNodeBuilder for FileSrcBuilder {
     fn kind(&self) -> PlanKind {
-        PlanKind::Src {
-            name: "file".into(),
-        }
+        PlanKind::Src { name: self.name() }
+    }
+
+    fn name(&self) -> String {
+        "file".into()
     }
 
     fn output(&self) -> PipeEdge {
         PipeEdge {
-            format: Some("stream".into()),
             model: Some(vec![
                 "binary".into(),
                 "file".into(),
                 "hash".into(),
                 "stream".into(),
             ]),
+            ..Default::default()
         }
     }
 
@@ -84,7 +86,7 @@ impl PipeSrc for FileSrc {
             }
         };
         let item = FileModelView::new(item, extension.into());
-        PipeChannel::stream_unit(item)
+        Ok(PipeChannel::from_unit(item))
     }
 }
 

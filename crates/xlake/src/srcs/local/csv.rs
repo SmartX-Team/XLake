@@ -6,7 +6,8 @@ use datafusion::prelude::CsvReadOptions;
 use serde::{Deserialize, Serialize};
 use xlake_ast::{PlanArguments, PlanKind};
 use xlake_core::{
-    formats::batch::BatchFormat, PipeChannel, PipeEdge, PipeNodeBuilder, PipeNodeImpl, PipeSrc,
+    batch::{DataFusionBatch, DEFAULT_TABLE_REF},
+    PipeChannel, PipeEdge, PipeNodeBuilder, PipeNodeImpl, PipeSrc,
 };
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -21,13 +22,18 @@ impl fmt::Display for CsvSrcBuilder {
 #[async_trait]
 impl PipeNodeBuilder for CsvSrcBuilder {
     fn kind(&self) -> PlanKind {
-        PlanKind::Src { name: "csv".into() }
+        PlanKind::Src { name: self.name() }
+    }
+
+    fn name(&self) -> String {
+        "csv".into()
     }
 
     fn output(&self) -> PipeEdge {
         PipeEdge {
-            format: Some("batch".into()),
+            batch: "datafusion".into(),
             model: Some(vec!["batch".into(), "stream".into()]),
+            ..Default::default()
         }
     }
 
@@ -48,11 +54,9 @@ impl PipeSrc for CsvSrc {
         let Self { path } = self;
         let path = path.to_string_lossy();
 
-        let format = BatchFormat::default();
+        let batch = DataFusionBatch::default();
         let options = CsvReadOptions::default();
-        format
-            .register_csv(BatchFormat::DEFAULT_TABLE_REF, path, options)
-            .await?;
-        Ok(PipeChannel::stream_batch(format))
+        batch.register_csv(DEFAULT_TABLE_REF, path, options).await?;
+        Ok(PipeChannel::from_batch(batch))
     }
 }

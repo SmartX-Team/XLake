@@ -19,9 +19,11 @@ impl fmt::Display for LocalStoreBuilder {
 #[async_trait]
 impl PipeNodeBuilder for LocalStoreBuilder {
     fn kind(&self) -> PlanKind {
-        PlanKind::Store {
-            name: "local".into(),
-        }
+        PlanKind::Store { name: self.name() }
+    }
+
+    fn name(&self) -> String {
+        "local".into()
     }
 
     async fn build(&self, args: &PlanArguments) -> Result<PipeNodeImpl> {

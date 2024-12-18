@@ -34,7 +34,7 @@ Please read the [feature support](#feature-support) below carefully.
   - 🔲 slurm _([Slurm Workload Manager](https://slurm.schedmd.com/) for HPC)_
   - 🔲 terraform _([Terraform by HashiCorp](https://www.terraform.io/) for Cloud Providers)_
 - 🚧 **format** _(Data File Format)_
-  - 🔎 [batch](https://github.com/apache/datafusion) _([Apache DataFusion](https://datafusion.apache.org/))_'
+  - 🔎 [batch](https://github.com/apache/datafusion) _([Apache DataFusion](https://datafusion.apache.org/))_
     - 🔲 SQL
   - ✅ stream _(In-Memory, by default)_
     - ✅ Dynamic type casting

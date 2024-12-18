@@ -1,6 +1,7 @@
-pub mod formats;
+pub mod batch;
 pub mod models;
 pub mod object;
+pub mod stream;
 
 use std::{
     borrow::Borrow,
@@ -18,15 +19,6 @@ use futures::{Stream, StreamExt, TryStreamExt};
 use serde::Serialize;
 use tracing::debug;
 use xlake_ast::{Object, PlanArguments, PlanKind, PlanType};
-
-#[async_trait]
-pub trait PipeFormat: Send + fmt::Debug {
-    fn extend_one(&mut self, item: self::object::LazyObject);
-
-    async fn batch(&mut self) -> Result<self::formats::batch::BatchFormat>;
-
-    async fn stream(&mut self) -> Result<self::formats::stream::StreamFormat>;
-}
 
 #[async_trait]
 pub trait PipeFunc: fmt::Debug {
@@ -137,7 +129,7 @@ where
 {
     async fn save(&self, channel: PipeChannel) -> Result<PipeChannel> {
         channel
-            .async_iter::<self::object::LazyObject>()
+            .into_stream::<self::object::LazyObject>()
             .await?
             .and_then(|item| async {
                 let mut item = match self::models::hash::HashModelView::__cast(item) {
@@ -174,21 +166,23 @@ where
 
 #[derive(Debug)]
 pub enum PipeNodeImpl {
-    Format(Box<dyn PipeFormat>),
+    Batch(Box<dyn self::batch::PipeBatch>),
     Func(Box<dyn PipeFunc>),
     Sink(Box<dyn PipeSink>),
     Src(Box<dyn PipeSrc>),
     Store(Arc<dyn PipeStore>),
+    Stream(Box<dyn self::stream::PipeStream>),
 }
 
 impl PipeNodeImpl {
     pub const fn type_name(&self) -> PlanType {
         match self {
-            Self::Format(_) => PlanType::Format,
+            Self::Batch(_) => PlanType::Batch,
             Self::Func(_) => PlanType::Func,
             Self::Sink(_) => PlanType::Sink,
             Self::Src(_) => PlanType::Src,
             Self::Store(_) => PlanType::Store,
+            Self::Stream(_) => PlanType::Stream,
         }
     }
 }
@@ -225,15 +219,28 @@ impl fmt::Display for PipeNode {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PipeEdge {
-    pub format: Option<String>,
+    pub batch: String,
     pub model: Option<Vec<String>>,
+    pub stream: String,
+}
+
+impl Default for PipeEdge {
+    fn default() -> Self {
+        Self {
+            batch: self::batch::NAME.into(),
+            model: None,
+            stream: self::stream::NAME.into(),
+        }
+    }
 }
 
 #[async_trait]
 pub trait PipeNodeBuilder: fmt::Debug {
     fn kind(&self) -> PlanKind;
+
+    fn name(&self) -> String;
 
     fn input(&self) -> PipeEdge {
         PipeEdge::default()
@@ -248,13 +255,15 @@ pub trait PipeNodeBuilder: fmt::Debug {
 
 #[derive(Debug)]
 pub struct PipeChannel {
-    format: Box<dyn PipeFormat>,
+    batch: Box<dyn self::batch::PipeBatch>,
+    stream: Box<dyn self::stream::PipeStream>,
 }
 
 impl Default for PipeChannel {
     fn default() -> Self {
         Self {
-            format: Box::new(self::formats::stream::StreamFormat::default()),
+            batch: Box::new(self::batch::DefaultBatch::default()),
+            stream: Box::new(self::stream::DefaultStream::default()),
         }
     }
 }
@@ -262,7 +271,7 @@ impl Default for PipeChannel {
 impl Extend<self::object::LazyObject> for PipeChannel {
     fn extend<T: IntoIterator<Item = self::object::LazyObject>>(&mut self, iter: T) {
         iter.into_iter()
-            .for_each(|item| self.format.extend_one(item))
+            .for_each(|item| self.stream.extend_one(item))
     }
 }
 
@@ -272,54 +281,64 @@ impl FromIterator<self::object::LazyObject> for PipeChannel {
     where
         T: IntoIterator<Item = self::object::LazyObject>,
     {
-        Self {
-            format: Box::new(self::formats::stream::StreamFormat::from_iter(iter)),
-        }
+        let stream = self::stream::DefaultStream::from_iter(iter);
+        Self::from_stream(stream)
     }
 }
 
 impl PipeChannel {
     #[inline]
-    pub async fn async_iter<T>(self) -> Result<PipeChannelAsyncIter<T>>
-    where
-        T: Unpin + PipeModelOwned<self::object::LazyObject>,
-    {
-        let Self { mut format } = self;
-
-        Ok(PipeChannelAsyncIter {
-            _view: PhantomData,
-            stream: format.stream().await?,
-        })
-    }
-
-    #[inline]
-    pub fn stream_batch(format: impl 'static + PipeFormat) -> Self {
+    pub fn from_batch(batch: impl 'static + self::batch::PipeBatch) -> Self {
         Self {
-            format: Box::new(format),
+            batch: Box::new(batch),
+            ..Default::default()
         }
     }
 
     #[inline]
-    pub fn stream_unit<O, T>(object: T) -> Result<Self>
+    pub fn from_stream(stream: impl 'static + self::stream::PipeStream) -> Self {
+        Self {
+            stream: Box::new(stream),
+            ..Default::default()
+        }
+    }
+
+    #[inline]
+    pub fn from_unit<O, T>(object: T) -> Self
     where
         O: Borrow<self::object::LazyObject> + Into<self::object::LazyObject>,
         T: Serialize + PipeModelOwned<O>,
     {
         let item = object.into_any();
-        let format = Box::new(self::formats::stream::StreamFormat::from_unit(item));
-        Ok(Self { format })
+        let stream = self::stream::DefaultStream::from_unit(item);
+        Self::from_stream(stream)
+    }
+
+    #[inline]
+    pub async fn into_stream<T>(self) -> Result<PipeChannelStream<T>>
+    where
+        T: Unpin + PipeModelOwned<self::object::LazyObject>,
+    {
+        let Self { batch, mut stream } = self;
+
+        Ok(PipeChannelStream {
+            _view: PhantomData,
+            batch,
+            stream: stream.to_default().await?,
+        })
     }
 }
 
-pub struct PipeChannelAsyncIter<T>
+pub struct PipeChannelStream<T>
 where
     T: Unpin + PipeModelOwned<self::object::LazyObject>,
 {
     _view: PhantomData<T>,
-    stream: self::formats::stream::StreamFormat,
+    batch: Box<dyn self::batch::PipeBatch>,
+    stream: self::stream::DefaultStream,
 }
 
-impl<T> Stream for PipeChannelAsyncIter<T>
+impl<T> Stream for PipeChannelStream<T>
 where
     T: Unpin + PipeModelOwned<self::object::LazyObject>,
 {

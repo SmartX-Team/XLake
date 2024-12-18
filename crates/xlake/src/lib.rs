@@ -37,14 +37,16 @@ impl PipeSession {
     }
 
     fn add_builtin_builders(&mut self) {
-        #[cfg(feature = "batch")]
-        self.insert_builder(Box::new(::xlake_core::formats::batch::BatchBuilder));
-        self.insert_builder(Box::new(::xlake_core::formats::stream::StreamFormatBuilder));
+        // Defaults
+        self.insert_builder(Box::new(::xlake_core::batch::DefaultBatchBuilder::default()));
+        self.insert_builder(Box::new(
+            ::xlake_core::stream::DefaultStreamBuilder::default(),
+        ));
+
         #[cfg(feature = "libreoffice")]
         self.insert_builder(Box::new(self::models::builtins::binary::pdf::PdfBuilder));
         #[cfg(feature = "io-std")]
         self.insert_builder(Box::new(self::sinks::local::stdout::StdoutSinkBuilder));
-        #[cfg(feature = "csv")]
         self.insert_builder(Box::new(self::srcs::local::csv::CsvSrcBuilder));
         #[cfg(feature = "fs")]
         self.insert_builder(Box::new(self::srcs::local::file::FileSrcBuilder));
@@ -63,8 +65,9 @@ impl PipeSession {
     }
 
     pub async fn call_with(&self, plans: Vec<Plan>) -> Result<()> {
-        let mut input_format = None;
+        let mut input_batch = ::xlake_core::batch::NAME.to_string();
         let mut input_model = BTreeSet::default();
+        let mut input_stream = ::xlake_core::stream::NAME.to_string();
         let mut nodes = Vec::default();
         let mut term_input = None;
         let mut term_output = None;
@@ -80,20 +83,17 @@ impl PipeSession {
             };
 
             let PipeEdge {
-                format: output_format,
+                batch: output_batch,
                 model: output_model,
+                stream: output_stream,
             } = builder.input();
 
             debug!("sequence.{index}.{kind}.pre: '{args:?}'");
-            if let Some(output_format) = output_format {
-                let input_format = match input_format.as_ref() {
-                    Some(v) => v,
-                    None => bail!("Implicit format is not allowed"),
-                };
-                debug!("sequence.{index}.{kind}.pre.format: '{input_format:?}'");
-                let inputs = iter::once(input_format);
-                let outputs = iter::once(&output_format);
-                let type_name = ValidatableTypeName::Format;
+            {
+                debug!("sequence.{index}.{kind}.pre.batch: '{input_batch:?}'");
+                let inputs = iter::once(&input_batch);
+                let outputs = iter::once(&output_batch);
+                let type_name = ValidatableTypeName::Batch;
                 self.validate_types(inputs, outputs, type_name)?
             }
             if let Some(output_model) = output_model {
@@ -106,19 +106,31 @@ impl PipeSession {
                 let type_name = ValidatableTypeName::Model;
                 self.validate_types(inputs, outputs, type_name)?
             }
+            {
+                debug!("sequence.{index}.{kind}.pre.stream: '{input_stream:?}'");
+                let inputs = iter::once(&input_stream);
+                let outputs = iter::once(&output_stream);
+                let type_name = ValidatableTypeName::Stream;
+                self.validate_types(inputs, outputs, type_name)?
+            }
 
             let PipeEdge {
-                format: output_format,
+                batch: output_batch,
                 model: output_model,
+                stream: output_stream,
             } = builder.output();
 
-            if let Some(output_format) = output_format {
-                debug!("sequence.{index}.{kind}.post.format: {output_format:?}");
-                input_format = Some(output_format);
+            {
+                debug!("sequence.{index}.{kind}.post.batch: {output_batch:?}");
+                input_batch = output_batch;
             }
             if let Some(output_model) = output_model {
                 debug!("sequence.{index}.{kind}.post.model: {output_model:?}");
                 input_model.extend(output_model);
+            }
+            {
+                debug!("sequence.{index}.{kind}.post.stream: {output_stream:?}");
+                input_stream = output_stream;
             }
 
             let imp = builder.build(&args).await?;
@@ -157,8 +169,9 @@ impl PipeSession {
         debug!("Initialized {} plans", nodes.len());
 
         // TODO: Detach SequencePlan from `[call_with]`
-        drop(input_format);
+        drop(input_batch);
         drop(input_model);
+        drop(input_stream);
         drop(term_input);
         drop(term_output);
 
@@ -168,7 +181,7 @@ impl PipeSession {
             debug!("Execute index {index} @ plan {}", &node.kind);
             let next_channel = match node.imp {
                 // TODO: to be implemented
-                PipeNodeImpl::Format(imp) => todo!(),
+                PipeNodeImpl::Batch(imp) => todo!(),
                 // TODO: to be implemented
                 PipeNodeImpl::Func(imp) => imp.call(channel.unwrap()).await?,
                 // TODO: to be implemented
@@ -182,6 +195,8 @@ impl PipeSession {
                     // TODO: to be implemented (load)
                     None => todo!(),
                 },
+                // TODO: to be implemented
+                PipeNodeImpl::Stream(imp) => todo!(),
             };
             channel = Some(next_channel);
         }
@@ -196,8 +211,9 @@ impl PipeSession {
     ) -> Result<Vec<&dyn PipeNodeBuilder>> {
         iter.cloned()
             .map(|name| match type_name {
-                ValidatableTypeName::Format => PlanKind::Format { name },
+                ValidatableTypeName::Batch => PlanKind::Batch { name },
                 ValidatableTypeName::Model => PlanKind::Model { name },
+                ValidatableTypeName::Stream => PlanKind::Stream { name },
             })
             .map(|ref kind| {
                 self.builders
@@ -230,15 +246,17 @@ impl PipeSession {
 
 #[derive(Copy, Clone)]
 enum ValidatableTypeName {
-    Format,
+    Batch,
     Model,
+    Stream,
 }
 
 impl fmt::Display for ValidatableTypeName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Format => "format".fmt(f),
+            Self::Batch => "batch".fmt(f),
             Self::Model => "model".fmt(f),
+            Self::Stream => "stream".fmt(f),
         }
     }
 }

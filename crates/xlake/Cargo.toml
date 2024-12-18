@@ -21,10 +21,8 @@ workspace = true
 
 [features]
 default = []
-full = ["batch", "csv", "fs", "io-std", "libreoffice"]
+full = ["fs", "io-std", "libreoffice"]
 
-batch = ["dep:datafusion", "xlake-core/batch"]
-csv = ["batch"]
 fs = ["tokio/fs"]
 io-std = ["tokio/io-std"]
 libreoffice = ["dep:async-tempfile", "dep:which", "tokio/fs", "tokio/process"]
@@ -38,7 +36,7 @@ xlake-parser = { workspace = true }
 anyhow = { workspace = true }
 async-tempfile = { workspace = true, optional = true }
 async-trait = { workspace = true }
-datafusion = { workspace = true, optional = true }
+datafusion = { workspace = true }
 futures = { workspace = true }
 object_store = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

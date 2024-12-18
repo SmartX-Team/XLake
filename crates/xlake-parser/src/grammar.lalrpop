@@ -23,8 +23,8 @@ PlanKind: PlanKind = {
             func,
         }
     },
-    r"[a-z][_a-z0-9]*format" => PlanKind::Format {
-        name: <>[..<>.len() - 4].into(),
+    r"[a-z][_a-z0-9]*batch" => PlanKind::Batch {
+        name: <>[..<>.len() - 5].into(),
     },
     r"[a-z][_a-z0-9]*sink" => PlanKind::Sink {
         name: <>[..<>.len() - 4].into(),
@@ -34,6 +34,9 @@ PlanKind: PlanKind = {
     },
     r"[a-z][_a-z0-9]*store" => PlanKind::Store {
         name: <>[..<>.len() - 5].into(),
+    },
+    r"[a-z][_a-z0-9]*stream" => PlanKind::Stream {
+        name: <>[..<>.len() - 6].into(),
     },
 };
 
@@ -71,10 +74,11 @@ Name: String = Iden => <>.into();
 Iden: &'input str = r"[a-z][_a-z0-9]*";
 
 match {
-   r"[a-z][_a-z0-9]*format",
+   r"[a-z][_a-z0-9]*batch",
    r"[a-z][_a-z0-9]*sink",
    r"[a-z][_a-z0-9]*src",
    r"[a-z][_a-z0-9]*store",
+   r"[a-z][_a-z0-9]*stream",
 } else {
    r"[a-z][_a-z0-9]*",
    _
